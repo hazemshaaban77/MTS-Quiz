@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مسابقة التقييم</title>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- مكتبة توليد الـ QR Code -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<style>
+:root{--bg:#E6EBF2;--card:#fff;--ink:#22303F;--mute:#5B6A7C;--line:#C9D2DE;--accent:#0E7C86;--ok:#1E8E5A;--bad:#C4452D;--warn:#D9901A;--on:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16202C;--card:#1F2C3B;--ink:#E8EEF5;--mute:#9AA9BA;--line:#34465A;--accent:#4FC3CE;--ok:#4CC38A;--bad:#EF7B63;--warn:#F0B34A;--on:#0F1A25}}
+:root[data-theme="dark"]{--bg:#16202C;--card:#1F2C3B;--ink:#E8EEF5;--mute:#9AA9BA;--line:#34465A;--accent:#4FC3CE;--ok:#4CC38A;--bad:#EF7B63;--warn:#F0B34A;--on:#0F1A25}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Readex Pro",Tahoma,Arial,sans-serif;line-height:1.6;min-height:100vh}
+main{max-width:560px;margin:0 auto;padding:16px}
+.note{font-size:13px;color:var(--mute);border:1px dashed var(--line);border-radius:10px;padding:8px 12px;margin-bottom:14px}
+h1{font-size:26px;margin:8px 0 6px;line-height:1.3}
+h2{font-size:20px;margin:0 0 14px;line-height:1.5;font-weight:500}
+p{margin:0 0 14px;color:var(--mute)}
+.card{background:var(--card);border-radius:16px;padding:18px;margin-bottom:14px}
+input:not([type=radio]),textarea{width:100%;font:inherit;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);margin-bottom:12px}
+input:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn{width:100%;font:inherit;font-weight:700;padding:13px;border:0;border-radius:12px;background:var(--accent);color:var(--on);cursor:pointer}
+.btn:disabled{background:var(--line);cursor:not-allowed}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;color:var(--mute);font-size:14px}
+.time{font-size:30px;font-weight:700;color:var(--ink);min-width:2ch;text-align:left}
+.time.low{color:var(--bad)}
+.tbar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin-bottom:16px}
+.tbar i{display:block;height:100%;width:100%;background:var(--warn);float:right}
+.opt{display:flex;gap:12px;align-items:center;width:100%;text-align:right;font:inherit;padding:14px;margin-bottom:10px;background:var(--card);color:var(--ink);border:2px solid var(--line);border-radius:12px;cursor:pointer}
+.opt b{flex:none;width:30px;height:30px;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-size:14px}
+.opt.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--card))}
+.opt.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--card))}
+.opt.pick{border-color:var(--accent)}
+.opt:disabled{cursor:default;color:var(--ink)}
+.verdict{font-size:18px;font-weight:700;margin:0 0 4px}
+.verdict.ok{color:var(--ok)}.verdict.bad{color:var(--bad)}
+.board{position:relative}
+.row{position:absolute;inset-inline:0;height:62px;transition:transform .9s cubic-bezier(.3,.8,.3,1)}
+.line1{display:flex;align-items:center;gap:8px;font-size:15px}
+.rk{width:22px;color:var(--mute);font-size:13px}
+.nm{flex:1;font-weight:500}.me .nm{color:var(--accent);font-weight:700}
+.sc{font-variant-numeric:tabular-nums;font-weight:700}
+.chip{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;color:var(--on)}
+.chip.ok{background:var(--ok)}.chip.bad{background:var(--bad)}.chip.no{background:var(--mute)}
+.d{font-size:12px;color:var(--ok);min-width:44px;text-align:left}
+.track{height:12px;margin-top:6px;border-radius:7px;background:var(--line);position:relative}
+.bar{position:absolute;top:0;right:0;height:100%;border-radius:7px;background:var(--mute);transition:width .9s ease;width:3%}
+.me .bar{background:var(--accent)}
+.bar::after{content:"";position:absolute;left:-3px;top:-4px;width:20px;height:20px;border-radius:50%;background:inherit;border:3px solid var(--card)}
+textarea{resize:vertical}textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn.alt{background:var(--card);color:var(--accent);border:2px solid var(--accent)}
+.err{color:var(--bad);margin-top:10px}
+.del{font:inherit;font-size:13px;color:var(--bad);background:none;border:0;cursor:pointer;padding:4px 8px}
+.oe{display:flex;gap:10px;align-items:center}
+.oe input[type=radio]{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent)}
+.oe input[type=radio]{margin-top:13px}
+.fl{display:block;font-size:14px;color:var(--mute)}.fl input{margin-top:4px}
+#qrcode{display:flex;justify-content:center;margin:15px 0}
+.player-tag{display:inline-block;background:var(--bg);padding:6px 12px;border-radius:20px;margin:4px;font-weight:500;border:1px solid var(--line)}
+@media (prefers-reduced-motion:reduce){.row,.bar{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<div class="note" id="nt">نسخة المدرب: عدّل الأسئلة والإعدادات ثم نزّل نسخة المتدربين للربط المباشر بـ Firebase.</div>
+<div id="app"></div>
+</main>
+<script>
+const CFG=null;
+const SRC="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
+let LIMIT=30, NQ=0, TITLE="", TARGET_PLAYERS=5;
+let Q=[
+{q:"ما اسم المستند الذي يصدره الناقل ويثبت استلام البضاعة وعقد نقلها؟",o:["بوليصة الشحن","إيصال سداد","شهادة منشأ","عقد إيجار"],a:0},
+{q:"من هو المخلّص الجمركي؟",o:["موظف يحدد سعر البضاعة","وسيط مرخّص ينجز الإجراءات الجمركية نيابة عن المستورد أو المصدّر","سائق الشاحنة الناقلة","مسؤول التأمين على الشحنة"],a:1},
+{q:"ماذا توضح شهادة المنشأ؟",o:["وزن الحاوية","سعر البيع للمستهلك","البلد الذي صُنعت أو أُنتجت فيه البضاعة","اسم شركة الشحن"],a:2},
+{q:"ما الغرض الأساسي من الفاتورة التجارية في الشحنة؟",o:["حجز موعد التفريغ","بيان قيمة البضاعة وتفاصيل البيع بين البائع والمشتري","إثبات ملكية الميناء","تحديد مسار السفينة"],a:1},
+{q:"ماذا يعني الاختصار ETA في الشحن؟",o:["وقت الوصول المتوقع","رسوم النقل الإضافية","نوع الحاوية","شهادة الفحص"],a:0}
+];
+const BOTS=[{n:"سلمى",acc:.85,spd:[4,13]},{n:"كريم",acc:.7,spd:[3,16]},{n:"منة",acc:.6,spd:[6,20]},{n:"يوسف",acc:.75,spd:[5,15]},{n:"هدى",acc:.5,spd:[8,24]}];
+let MAX=0; const H=62, LET=["أ","ب","ج","د"];
+
+// إعدادات Firebase الخاصة بك
+const firebaseConfig = {
+  apiKey: "AIzaSyD6rWwK4hQCvDaMlMIntHurpIEyl10AQQI",
+  authDomain: "mts-quiz-64faa.firebaseapp.com",
+  databaseURL: "https://mts-quiz-64faa-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "mts-quiz-64faa",
+  storageBucket: "mts-quiz-64faa.firebasestorage.app",
+  messagingSenderId: "417973515216",
+  appId: "1:417973515216:web:036f22c2fc52b3bb15ffd5",
+  measurementId: "G-WQPH1914L6"
+};
+
+let db = null;
+if (typeof firebase !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+  } catch(e) {}
+}
+
+if(!CFG)try{const sv=JSON.parse(localStorage.getItem("quizQ")||"null");if(Array.isArray(sv)&&sv.length&&sv.every(x=>x&&typeof x.q==="string"&&Array.isArray(x.o)&&x.o.length>=2&&x.o[x.a]!==undefined))Q=sv}catch(e){}
+if(!CFG)try{const cf=JSON.parse(localStorage.getItem("quizCfg")||"null");if(cf){if(cf.t>=5&&cf.t<=120)LIMIT=cf.t|0;if(cf.n>=1)NQ=cf.n|0;if(typeof cf.ti==="string")TITLE=cf.ti;if(cf.tp>=1)TARGET_PLAYERS=cf.tp|0}}catch(e){}
+if(CFG){Q=CFG.q;LIMIT=CFG.t;NQ=Math.min(CFG.n,Q.length);TITLE=CFG.title||"";TARGET_PLAYERS=CFG.tp||5}
+
+const app=document.getElementById("app");
+const sh=a=>{a=[...a];for(let i=a.length;i-->1;){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pts=t=>Math.round(500+500*(1-t/LIMIT));
+let S,tm;
+
+function home(){
+  if(CFG){
+    // شاشة المتدربين (عند استخدام ملف المتسابقين المرتبط بـ Firebase)
+    app.innerHTML=`<h1>${esc(TITLE||"مسابقة التقييم")}</h1>
+    <p>أهلاً بك! اكتب اسمك للانضمام وانتظار بدء المسابقة مع الجميع.</p>
+    <div class="card">
+      <input id="nm" maxlength="20" placeholder="اكتب اسمك الثلاثي" aria-label="اسمك">
+      <button class="btn" id="join">انضمام للغرفة</button>
+    </div>
+    <div id="wait-box"></div>`;
+    
+    document.getElementById("join").onclick = () => {
+      const name = document.getElementById("nm").value.trim();
+      if(!name) { alert("من فضلك اكتب اسمك"); return; }
+      joinLiveRoom(name);
+    };
+    return;
+  }
+
+  // شاشة المدرب الأساسية
+  app.innerHTML=`<h1>مسابقة التقييم</h1><p>بنك الأسئلة فيه ${cnt(Q.length)}. الأسرع في الإجابة الصحيحة يحصل على نقاط أكثر.</p>
+  <div class="card">
+    <label class="fl">عنوان المسابقة<input id="ttl" maxlength="60" value="${esc(TITLE)}" placeholder="مثال: تقييم سيشن منصة نافذة"></label>
+    <label class="fl">عدد الأسئلة في الجولة<input id="nq" type="number" min="1" max="${Q.length}" value="${Math.min(NQ||Q.length,Q.length)}"></label>
+    <label class="fl">مدة كل سؤال بالثواني<input id="lim" type="number" min="5" max="120" value="${LIMIT}"></label>
+    <label class="fl">عدد المتدربين المطلوب لبدء المسابقة تلقائياً<input id="tp" type="number" min="1" max="100" value="${TARGET_PLAYERS}"></label>
+    <button class="btn alt" id="test-local" style="margin-bottom:12px">تجربة اللعبة محلياً (مع بوتات)</button>
+  </div>
+  <div class="card" id="instructor-live" style="text-align:center">
+    <h2>رابط انضمام المتدربين (QR Code)</h2>
+    <div id="qrcode"></div>
+    <p style="word-break:break-all;font-size:13px;" id="link-txt"></p>
+    <hr style="border:0;border-top:1px solid var(--line);margin:15px 0">
+    <h3>المتدربون المنضمون (<span id="p-count">0</span> / <span id="p-target">${TARGET_PLAYERS}</span>):</h3>
+    <div id="p-list" style="margin-bottom:12px;text-align:right"></div>
+    <button class="btn" id="force-start" disabled>ابدأ المسابقة الآن يدوياً</button>
+  </div>
+  <button class="btn alt" id="ed">تعديل الأسئلة</button>
+  <button class="btn alt" id="dl" style="margin-top:10px">تنزيل نسخة المتدربين (لايف)</button><div id="out"></div>`;
+  
+  initInstructorLive();
+
+  document.getElementById("test-local").onclick = () => { rd(); start("أنت"); };
+  document.getElementById("ed").onclick = edit;
+  document.getElementById("dl").onclick = dl;
+}
+
+function rd(){
+  const n=+document.getElementById("nq").value, t=+document.getElementById("lim").value, tp=+document.getElementById("tp").value;
+  NQ=Math.min(Math.max(n|0||Q.length,1),Q.length);
+  LIMIT=Math.min(Math.max(t|0||30,5),120);
+  TARGET_PLAYERS=Math.max(tp|0||5,1);
+  TITLE=document.getElementById("ttl").value.trim();
+  try{localStorage.setItem("quizCfg",JSON.stringify({n:NQ,t:LIMIT,ti:TITLE,tp:TARGET_PLAYERS}))}catch(e){}
+}
+
+function initInstructorLive(){
+  rd();
+  const traineeUrl = window.location.href.replace("instructor.html", "trainee.html");
+  const linkEl = document.getElementById("link-txt");
+  if(linkEl) linkEl.textContent = traineeUrl;
+  
+  const qrContainer = document.getElementById("qrcode");
+  if(qrContainer && window.QRCode) {
+    qrContainer.innerHTML = "";
+    new QRCode(qrContainer, { text: traineeUrl, width: 160, height: 160 });
+  }
+
+  if(!db) return;
+  const roomRef = db.ref("quizRoom");
+  roomRef.set({ state: "waiting", targetCount: TARGET_PLAYERS, qIndex: 0, players: {} });
+
+  roomRef.on("value", snap => {
+    const data = snap.val();
+    if(!data) return;
+    const players = data.players || {};
+    const keys = Object.keys(players);
+    const countEl = document.getElementById("p-count");
+    const listEl = document.getElementById("p-list");
+    const startBtn = document.getElementById("force-start");
+    
+    if(countEl) countEl.textContent = keys.length;
+    if(listEl) {
+      listEl.innerHTML = keys.length ? keys.map(k=>`<span class="player-tag">${players[k].name}</span>`).join(" ") : `<span style="color:var(--mute)">في انتظار انضمام المتدربين...</span>`;
+    }
+    if(startBtn) startBtn.disabled = keys.length === 0;
+
+    // البدء التلقائي بمجرد اكتمال العدد
+    if(data.state === "waiting" && keys.length >= TARGET_PLAYERS) {
+      roomRef.update({ state: "playing", qIndex: 0 });
+    }
+
+    if(data.state === "playing" && !window.liveStarted) {
+      window.liveStarted = true;
+      startLiveInstructorMode(data);
+    }
+  });
+
+  const startBtn = document.getElementById("force-start");
+  if(startBtn) {
+    startBtn.onclick = () => {
+      roomRef.update({ state: "playing", qIndex: 0 });
+    };
+  }
+}
+
+function startLiveInstructorMode(data) {
+  // شاشة تحكم المدرب أثناء اللعب الحي وعرض النتائج
+  NQ = Math.min(Q.length, data.targetCount || Q.length);
+  S = { i: data.qIndex || 0, order: Q.slice(0, NQ) };
+  showInstructorLiveDashboard();
+}
+
+function showInstructorLiveDashboard() {
+  if(!db) return;
+  db.ref("quizRoom").on("value", snap => {
+    const data = snap.val();
+    if(!data) return;
+    const players = data.players || {};
+    const sorted = Object.values(players).sort((a,b)=>(b.score||0)-(a.score||0));
+    MAX = NQ * 1000;
+    
+    app.innerHTML = `<h1>لوحة التحكم المباشرة 🖥️</h1>
+    <p>السؤال الحالي قيد الإجابة لدى المتدربين...</p>
+    <div class="card">
+      <h2>لوحة الصدارة الحية 🏆</h2>
+      <div class="board" style="height:${Math.max(1, sorted.length)*H}px">
+        ${sorted.map((p,i)=>`
+          <div class="row" style="transform:translateY(${i*H}px)">
+            <div class="line1"><span class="rk">${i+1}</span><span class="nm">${esc(p.name)}</span><span class="sc">${p.score||0}</span></div>
+            <div class="track"><i class="bar" style="width:${Math.max(3, (p.score||0)/MAX*97)}%"></i></div>
+          </div>`).join("")}
+      </div>
+    </div>`;
+  });
+}
+
+function joinLiveRoom(name) {
+  if(!db) { alert("خطأ في الاتصال بقاعدة البيانات"); return; }
+  const myId = "p_" + Math.random().toString(36).substr(2,9);
+  db.ref("quizRoom/players/" + myId).set({ name: name, score: 0 });
+
+  app.innerHTML = `<h1>أهلاً بك، ${esc(name)}!</h1>
+  <div class="card" style="text-align:center">
+    <p style="font-size:18px;font-weight:bold;color:var(--accent)">تم تسجيل دخولك بنجاح ✅</p>
+    <p style="color:var(--mute)">في انتظار اكتمال انضمام باقي المتدربين لتبدأ المسابقة تلقائياً مع الجميع في نفس اللحظة...</p>
+  </div>`;
+
+  const roomRef = db.ref("quizRoom");
+  roomRef.on("value", snap => {
+    const data = snap.val();
+    if(!data) return;
+    if(data.state === "playing") {
+      // بدء اللعبة في نفس اللحظة للمتدرب
+      NQ = Math.min(Q.length, data.targetCount || Q.length);
+      MAX = NQ * 1000;
+      S = { i: 0, order: sh(Q).slice(0, NQ), P: [{n: name, me: 1, s: 0, ps: 0}], myFirebaseId: myId };
+      ask();
+    }
+  });
+}
+
+function dl(){
+  rd();
+  const cfg={title:TITLE,t:LIMIT,n:NQ,tp:TARGET_PLAYERS,q:Q};
+  const html=SRC.replace("const CFG="+"null;",()=>"const CFG="+JSON.stringify(cfg).replace(/</g,"\\u003c")+";").replace(/<title>[\s\S]*?<\/title>/,()=>"<title>"+esc(TITLE||"مسابقة التقييم")+"</title>");
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([html],{type:"text/html"}));a.download="quiz-trainees.html";document.body.appendChild(a);a.click();a.remove()}catch(e){}
+  document.getElementById("out").innerHTML=`<details class="card" style="margin-top:12px"><summary>تم إنشاء ملف المتدربين بنجاح</summary><p>قم برفع ملف <b>quiz-trainees.html</b> ومعه ملف المدرب على Netlify لتعمل اللعبة لايف.</p><textarea readonly rows="4" onclick="this.select()">${esc(html)}</textarea></details>`;
+}
+
+const cnt=n=>n===1?"سؤال واحد":n===2?"سؤالان":n<=10?n+" أسئلة":n+" سؤالاً";
+let E;
+function edit(){
+  E=Q.map(x=>({q:x.q,o:[...x.o,"","","",""].slice(0,4),a:x.a}));
+  app.innerHTML=`<h1>أسئلة المسابقة</h1><p>اكتب السؤال واختياراته (اثنان على الأقل) وحدّد الإجابة الصحيحة بالدائرة.</p><div id="qs"></div>
+  <button class="btn alt" id="add">إضافة سؤال</button><button class="btn" id="sv" style="margin-top:10px">حفظ والعودة</button><p class="err" id="err" role="alert"></p>`;
+  const qs=document.getElementById("qs");
+  const draw=()=>{qs.innerHTML=E.map((x,i)=>`<div class="card" data-i="${i}"><div class="top"><span>السؤال ${i+1}</span><button class="del" data-del>حذف</button></div>
+   <textarea data-f rows="2" placeholder="نص السؤال" aria-label="نص السؤال">${esc(x.q)}</textarea>
+   ${x.o.map((t,k)=>`<label class="oe"><input type="radio" name="r${i}" data-r="${k}" ${x.a===k?"checked":""} aria-label="الإجابة الصحيحة"><input type="text" data-o="${k}" value="${esc(t)}" placeholder="الاختيار ${LET[k]}"></label>`).join("")}</div>`).join("")};
+  qs.oninput=e=>{const t=e.target,i=+t.closest(".card").dataset.i;if(t.dataset.f!==undefined)E[i].q=t.value;else if(t.dataset.o!==undefined)E[i].o[+t.dataset.o]=t.value};
+  qs.onchange=e=>{const t=e.target;if(t.dataset.r!==undefined)E[+t.closest(".card").dataset.i].a=+t.dataset.r};
+  qs.onclick=e=>{if(e.target.dataset.del!==undefined){E.splice(+e.target.closest(".card").dataset.i,1);draw()}};
+  document.getElementById("add").onclick=()=>{E.push({q:"",o:["","","",""],a:0});draw();qs.lastElementChild.scrollIntoView({block:"center"})};
+  document.getElementById("sv").onclick=()=>{
+    const out=[],er=document.getElementById("err");
+    for(let i=0;i<E.length;i++){const x=E[i],q=x.q.trim(),o=[];let a=-1;
+      x.o.forEach((t,k)=>{t=t.trim();if(t){if(k===x.a)a=o.length;o.push(t)}});
+      if(!q&&!o.length)continue;
+      if(!q||o.length<2||a<0){er.textContent=`راجع السؤال ${i+1}: لازم نص السؤال واختياران على الأقل وإجابة صحيحة محدّدة.`;return}
+      out.push({q,o,a})}
+    if(!out.length){er.textContent="أضف سؤالاً واحداً على الأقل.";return}
+    Q=out;try{localStorage.setItem("quizQ",JSON.stringify(Q))}catch(e){}
+    home();
+  };
+  draw();
+}
+
+function start(name){
+  MAX=NQ*1000;S={i:0,order:sh(Q).slice(0,NQ),P:[{n:name,me:1,s:0,ps:0},...(CFG?[]:BOTS.map(b=>({n:b.n,b,s:0,ps:0})))]};
+  ask();
+}
+
+function ask(){
+  const q=S.order[S.i];
+  const opts=sh(q.o.map((t,k)=>({t,ok:k===q.a})));
+  S.c={opts,t0:Date.now(),over:false};
+  if(S.P) {
+    S.P.forEach(p=>{if(p.b){p.ok=Math.random()<p.b.acc;p.t=(p.b.spd[0]+Math.random()*(p.b.spd[1]-p.b.spd[0]))*LIMIT/30}});
+  }
+  app.innerHTML=`<div class="top"><span>السؤال ${S.i+1} من ${S.order.length}</span><span id="cnt"></span></div>
+  <div class="top"><span>الوقت المتبقي</span><span class="time" id="tt">${LIMIT}</span></div>
+  <div class="tbar"><i id="tb"></i></div>
+  <h2>${esc(q.q)}</h2>
+  ${opts.map((o,k)=>`<button class="opt" data-k="${k}"><b>${LET[k]}</b><span>${esc(o.t)}</span></button>`).join("")}`;
+  
+  app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+    if(S.c.over)return;
+    S.c.pick=+b.dataset.k;b.classList.add("pick");
+    app.querySelectorAll(".opt").forEach(x=>x.disabled=true);
+    S.c.el=(Date.now()-S.c.t0)/1000;
+    setTimeout(()=>finish(),900);
+  });
+  
+  clearInterval(tm);
+  tm=setInterval(()=>{
+    const el=(Date.now()-S.c.t0)/1000, left=Math.max(0,LIMIT-el);
+    const t=document.getElementById("tt");if(!t)return;
+    t.textContent=Math.ceil(left);t.classList.toggle("low",left<=LIMIT*.27);
+    document.getElementById("tb").style.width=(left/LIMIT*100)+"%";
+    if(S.P) {
+      const n=S.P.filter(p=>p.b&&p.t<=el).length+(S.c.pick!=null?1:0);
+      document.getElementById("cnt").textContent=CFG?"":n+" من "+S.P.length+" أجابوا";
+    }
+    if(left<=0&&S.c.pick==null)finish();
+  },100);
+}
+
+function finish(){
+  if(S.c.over)return;S.c.over=true;clearInterval(tm);
+  const c=S.c, el=c.el??LIMIT;
+  
+  let myScoreEarned = 0;
+  let isCorrect = c.pick!=null && c.opts[c.pick].ok;
+  if(isCorrect){ myScoreEarned = pts(el); }
+
+  if(CFG && db && S.myFirebaseId) {
+    db.ref("quizRoom/players/" + S.myFirebaseId + "/score").transaction(current => (current||0) + myScoreEarned);
+  }
+
+  if(S.P) {
+    S.P.forEach(p=>{p.ps=p.s;p.d=0});
+    const me = S.P[0];
+    me.none = c.pick==null; me.ok = isCorrect;
+    if(me.ok){ me.d = myScoreEarned; S.right = (S.right||0)+1; }
+    S.P.forEach(p=>{if(p.b&&p.ok)p.d=pts(p.t);p.s+=p.d});
+  }
+  reveal();
+}
+
+function board(fin){
+  if(!S.P) return "";
+  return `<div class="board" style="height:${S.P.length*H}px">`+S.P.map((p,i)=>`<div class="row${p.me?" me":""}" data-i="${i}">
+  <div class="line1"><span class="rk"></span><span class="nm">${esc(p.n)}</span>${fin?"":`<span class="d"></span><span class="chip ${p.none?"no":p.ok?"ok":"bad"}">${p.none?"–":p.ok?"✓":"✕"}</span>`}<span class="sc"></span></div>
+  <div class="track"><i class="bar"></i></div></div>`).join("")+`</div>`;
+}
+
+function place(key,fin){
+  if(!S.P) return;
+  const rank=k=>{const o=S.P.map((p,i)=>i).sort((a,b)=>S.P[b][k]-S.P[a][k]||a-b);const r={};o.forEach((i,n)=>r[i]=n);return r};
+  const r0=rank("ps"),r1=rank("s");
+  const rows=[...app.querySelectorAll(".row")];
+  const draw=(r,k)=>rows.forEach(el=>{const i=+el.dataset.i,p=S.P[i];
+    el.style.transform=`translateY(${r[i]*H}px)`;
+    el.querySelector(".rk").textContent=r[i]+1;
+    el.querySelector(".sc").textContent=p[k];
+    el.querySelector(".bar").style.width=Math.max(3,p[k]/MAX*97)+"%";
+    const d=el.querySelector(".d");if(d)d.textContent=k==="s"&&p.d?"+"+p.d:"";});
+  if(fin){draw(r1,"s");return}
+  draw(r0,"ps");
+  setTimeout(()=>draw(r1,"s"),500);
+}
+
+function reveal(){
+  const c=S.c, last=S.i===S.order.length-1;
+  const me = S.P ? S.P[0] : null;
+  const isOk = me ? me.ok : (c.pick!=null && c.opts[c.pick].ok);
+  const isNone = me ? me.none : c.pick==null;
+  const v = isNone ? ["انتهى الوقت","bad"] : isOk ? ["إجابة صحيحة، +"+(me?.d||pts(c.el))+" نقطة","ok"] : ["إجابة خاطئة","bad"];
+
+  app.innerHTML=`<div class="top"><span>نتيجة السؤال ${S.i+1} من ${S.order.length}</span></div>
+  <p class="verdict ${v[1]}">${v[0]}</p>
+  ${c.opts.map((o,k)=>`<button class="opt ${o.ok?"ok":k===c.pick?"bad":""}" disabled><b>${o.ok?"✓":LET[k]}</b><span>${esc(o.t)}</span></button>`).join("")}
+  <h2 style="margin-top:18px;font-size:17px">${CFG?"نتيجتك":"ترتيب المتسابقين"}</h2>${S.P?board(false):""}
+  <button class="btn" id="nx" style="margin-top:14px">${last?"اعرض النتيجة النهائية":"السؤال التالي"}</button>`;
+  if(S.P) place(null,false);
+  document.getElementById("nx").onclick=()=>{if(last)end();else{S.i++;ask()}};
+}
+
+function end(){
+  if(S.P) {
+    S.P.forEach(p=>p.ps=p.s);
+    const order=S.P.map((p,i)=>i).sort((a,b)=>S.P[b].s-S.P[a].s||a-b);
+    const pos=order.indexOf(0)+1;
+    app.innerHTML=`<h1>${pos===1?"أنت في المركز الأول":"مركزك "+pos+" من "+S.P.length}</h1><p>مجموع نقاطك ${S.P[0].s} من ${MAX}.</p>${board(true)}
+    <button class="btn" id="again" style="margin-top:14px">الصفحة الرئيسية</button>`;
+    place(true,true);
+  } else {
+    app.innerHTML=`<h1>انتهت المسابقة! 🎉</h1><p>شكراً لمشاركتك.</p><button class="btn" id="again" style="margin-top:14px">الصفحة الرئيسية</button>`;
+  }
+  document.getElementById("again").onclick=home;
+}
+
+if(CFG)document.getElementById("nt").remove();
+home();
+</script>
+</body>
+</html>
