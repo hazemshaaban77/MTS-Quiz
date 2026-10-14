@@ -56,6 +56,7 @@
       "answers": {
         "$roomId": {
           "$round": {
+            ".read": "auth != null && root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true",
             "$uid": {
               ".read": "auth != null && (auth.uid === $uid || root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true)",
               ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('arenaV1/participants').child($roomId).child(auth.uid).exists() && root.child('arenaV1/rooms').child($roomId).child('public/status').val() === 'question' && root.child('arenaV1/rooms').child($roomId).child('public/round').val() === $round && now <= root.child('arenaV1/rooms').child($roomId).child('public/deadline').val()",
