@@ -62,7 +62,7 @@ async function launch(){if(loading||!playlist.length)return;loading=true;$("laun
  const title=$("sessionTitle").value.trim()||"MTS Training Arena",id="a"+Math.random().toString(36).slice(2,9);
  try{const ref=db.ref(roomPath(id));if((await ref.once("value")).exists())throw Error("Collision");
  await ref.set({meta:{title,platform:"arena-v2",total:playlist.length},ctl:{phase:"lobby",i:0,type:"",startedAt:null,lock:null},current:null,players:{}});
- room=id;saveSession();attach();
+ room=id;saveSession();loading=false;attach();
  }catch(e){loading=false;const el=$("error");if(el)el.textContent="تعذّر إنشاء الجلسة. راجع صلاحيات Firebase وحساب المدرب";if($("launch"))$("launch").disabled=false}}
 async function publishCurrent(i){if(loading)return;loading=true;try{
  const a=playlist[i];if(!a)throw Error("Missing activity");
@@ -104,10 +104,10 @@ function drawParticipant(){
 function drawScreen(){
  if(!state)return;const c=state.ctl,ph=c.phase,link=urls();const current=state.current||{};
  if(ph==="lobby"){if(lastKey!=="lobby"){app.innerHTML='<section class="hero-stage"><span class="pill">GET READY</span><h1 class="hero">'+escA(state.meta.title)+'</h1><h2>امسح QR وادخل المنافسة</h2><div class="qr" id="qr"></div><p class="code">'+escA(room)+'</p><p id="people"></p></section>';if(window.QRCode)new QRCode($("qr"),{text:link.join,width:250,height:250});lastKey="lobby"}if($("people"))$("people").textContent=Object.keys(state.players||{}).length+" مشارك جاهز";return}
- if(ph==="q"){const key=ph+":"+c.i+":"+c.startedAt;if(lastKey!==key){lastKey=key;app.innerHTML='<section class="hero-stage"><span class="pill">'+(current.type==="poll"?"LIVE POLL":"QUIZ ARENA")+' • '+(c.i+1)+'/'+state.meta.total+'</span><h1 class="hero">'+escA(current.title)+'</h1><h2 class="question">'+escA(current.q)+'</h2><div class="grid">'+current.options.map((x,i)=>'<div class="activity"><span class="pill">'+"ABCD"[i]+'</span><h2>'+escA(x)+'</h2></div>').join("")+'</div>'+(current.type==="quiz"?'<div class="countdown" id="clock"></div>':'<p class="lead">صوّت من موبايلك!</p>')+'</section>'}
+ if(ph==="q"){const key=ph+":"+c.i+":"+c.startedAt;if(lastKey!==key){clearInterval(timer);timer=null;lastKey=key;app.innerHTML='<section class="hero-stage"><span class="pill">'+(current.type==="poll"?"LIVE POLL":"QUIZ ARENA")+' • '+(c.i+1)+'/'+state.meta.total+'</span><h1 class="hero">'+escA(current.title)+'</h1><h2 class="question">'+escA(current.q)+'</h2><div class="grid">'+current.options.map((x,i)=>'<div class="activity"><span class="pill">'+"ABCD"[i]+'</span><h2>'+escA(x)+'</h2></div>').join("")+'</div>'+(current.type==="quiz"?'<div class="countdown" id="clock"></div>':'<p class="lead">صوّت من موبايلك!</p>')+'</section>'}
  if(current.type==="quiz"&&!timer){timer=setInterval(()=>{if(!state||state.ctl.phase!=="q"){clearInterval(timer);timer=null;return}const left=Math.max(0,current.seconds-Math.floor((now()-c.startedAt)/1000));if($("clock"))$("clock").textContent=left},250)}return}
  clearInterval(timer);timer=null;
  const key=ph+":"+c.i;if(lastKey===key)return;lastKey=key;
- if(ph==="rev"){app.innerHTML='<section class="hero-stage"><span class="pill">RESULT REVEAL</span><h1 class="hero">'+escA(current.title)+'</h1><h2>'+escA(current.q)+'</h2><div class="panel">'+chart(current.options,state.cnt||[])+'</div>'+(current.type==="quiz"?'<h2 class="status">الإجابة الصحيحة: '+escA(current.options[c.correct]||"")+'</h2><div class="panel"><h2>لوحة الصدارة</h2>'+ranks().slice(0,2000)+'</div>':'<h2 class="status">كل صوت يصنع فرقًا</h2>')+'</section>'}
+ if(ph==="rev"){app.innerHTML='<section class="hero-stage"><span class="pill">RESULT REVEAL</span><h1 class="hero">'+escA(current.title)+'</h1><h2>'+escA(current.q)+'</h2><div class="panel">'+chart(current.options,state.cnt||[])+'</div>'+(current.type==="quiz"?'<h2 class="status">الإجابة الصحيحة: '+escA(current.options[c.correct]||"")+'</h2><div class="panel"><h2>لوحة الصدارة</h2>'+ranks()+'</div>':'<h2 class="status">كل صوت يصنع فرقًا</h2>')+'</section>'}
  else if(ph==="end"){app.innerHTML='<section class="hero-stage"><span class="pill">THE FINALS</span><h1 class="hero">أبطال الـArena 🏆</h1><div class="panel">'+ranks()+'</div></section>'}
 }
