@@ -124,10 +124,17 @@ function participantHome(){
       const emp=document.getElementById("employeeId").value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"");
       if(name.length<2||!/^[A-Z0-9_-]{2,20}$/.test(emp)){note("Invalid name or test employee ID");return;}
       try{
+        // Record the round active at admission; anyone joining during a question
+        // must wait until the following round. The matching security rule
+        // requires the server's current round to equal this claimed round.
+        const status=await db.ref("arenaV1/rooms/"+room+"/public").once("value");
+        const admittedRound=status.child("round").val();
+        if(status.child("status").val()==="completed"||status.child("joinOpen").val()!==true)throw Error("Joining is closed");
+        if(!/^r[0-9]+$/.test(admittedRound||""))throw Error("Round not ready");
         const claim=db.ref("arenaV1/claims/"+room+"/"+emp);
         const result=await claim.transaction(current=>current===null?me:undefined,undefined,false);
         if(!result.committed)throw Error("Employee ID already claimed");
-        try{await db.ref(path).set({name,employeeId:emp});}
+        try{await db.ref(path).set({name,employeeId:emp,joinedRound:admittedRound});}
         catch(err){note("Registration incomplete; ask trainer. Claim remains reserved for safety: "+err.message);return;}
         watchRoom();
       }catch(err){note(err.message);}
@@ -162,7 +169,15 @@ function watchRoom(){
           };
           choiceArea.appendChild(button);
         });
-        db.ref("arenaV1/answers/"+room+"/"+next.round+"/"+me).once("value").then(s=>{if(s.exists()){choiceArea.querySelectorAll("button").forEach(b=>b.disabled=true);note("Your answer is already recorded.");}});
+        Promise.all([
+          db.ref("arenaV1/answers/"+room+"/"+next.round+"/"+me).once("value"),
+          db.ref("arenaV1/participants/"+room+"/"+me+"/joinedRound").once("value")
+        ]).then(([prior,joined])=>{
+          if(prior.exists()||joined.val()===next.round){
+            choiceArea.querySelectorAll("button").forEach(b=>b.disabled=true);
+            note(prior.exists()?"Your answer is already recorded.":"You joined during this round. Wait for the next question.");
+          }
+        }).catch(e=>note(e.message));
       }else note(next.status==="completed"?"Pilot completed. No scores were calculated.":"Waiting for next question.");
     }
   });
