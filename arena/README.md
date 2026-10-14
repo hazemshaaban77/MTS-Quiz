@@ -15,13 +15,13 @@ Open `arena/index.html` in a browser (or serve `arena/` with a simple static web
 - Draft activity reordering and preview-only projection screen
 
 ## Not yet implemented
-Production Firebase authentication, realtime rooms and one-QR enrollment, security rules, multiple trainers, teams, scoring, answer collection, nesting, all 11 game engines, reports, lifecycle automation and production deployment. **Do not use preview for actual participant data or training results.** Reuse of current Firebase project requires a separate security and capacity review before integration.
+A production-ready Firebase integration, audited and deployed security rules, multiple trainers, teams, authoritative scoring, nested activity orchestration, full game engines, reports, lifecycle automation and production deployment. **Do not use preview for actual participant data or training results.** Reuse of current Firebase project requires a separate security and capacity review before integration.
 
 ## Free-tier planning
 GitHub Pages can serve these static assets. Realtime Database Spark has a limit of 100 simultaneous connections *including trainers and projector devices*. No assumption is made about the feasibility of supporting 100 trainees. No server secrets should ever be put in this repository.
 
 ## Safety
-This prototype never writes to Firebase. Original legacy pages and their Firebase configuration are unmodified.
+The local Studio and Simulator never touch Firebase. The OPTIONAL live pilot is a different, explicitly gated page that **would write to Firebase if someone opens it and connects after installing the necessary security rules**. No Firebase rules, settings or data have been changed by this commit. Original legacy pages and Firebase configuration remain unmodified.
 
 ## Local round simulator (iteration 2)
 Open `arena/simulator.html` using a local HTTP static server or the branch preview.
@@ -32,3 +32,26 @@ Open `arena/simulator.html` using a local HTTP static server or the branch previ
 - Run engine tests with `node --test arena/engine.test.mjs`. The branch includes a GitHub Actions syntax/unit-test workflow.
 
 Keep the feature branch unmerged until reviewed. No production deployment has been made.
+
+## Firebase cross-device pilot (iteration 3 — NOT production ready)
+Files: `arena/live.html`, `arena/live.mjs`, and `arena/security/arena-rules.reference.json`.
+
+The new **opt-in Firebase pilot** is for carefully controlled **test-only rooms**, and is not active simply because the files exist. It implements:
+- A trainer sign-in using existing Firebase email/password authentication **plus a manually provisioned allowlist entry**;
+- A room-specific participation link and QR code;
+- Anonymous test participant registration using a unique test employee ID, via an atomic claim;
+- Public live question broadcast with **no answer key exposed**, participant answer submission once per round, and trainer-only response counts;
+- Room closure. **No scoring is computed or written**, and there is no real gameplay fairness guarantee yet.
+
+### Required setup before opening the live pilot
+1. Review your existing Firebase project's authentication settings, Realtime Database instance, and **all existing root security rules**; note especially that permissive ancestor `.read`/`.write` rules cannot be restricted by child rules.
+2. **Do not upload or replace the entire database rules** with `arena/security/arena-rules.reference.json`. That file is a *reference for the new `arenaV1` namespace only*, which must be carefully integrated with and audited against the existing production rules. Applying it wholesale would risk breaking the old quiz.
+3. Provision **one trusted trainer UID** at `arenaV1/trainerAllowlist/<Firebase-Auth-UID> = true` via an authorized admin process. Client-side self-grant is forbidden by the reference rules.
+4. Confirm Email/Password and Anonymous Firebase Authentication providers are enabled, and that `../firebase-config.js` points to the intended, reviewed Firebase project; do not copy service-account credentials to the repository.
+5. In a **separate staging database/project**, deploy audited rules and use **fake names and fake employee IDs**, not real employee records. Verify unauthenticated, unknown trainer, duplicate ID, repeated answer, late answer, wrong-user read, and public answer-key access are rejected.
+6. Serve the `arena/` content through a local static HTTP server with the expected legacy parent assets or a properly configured staging web origin. Only after review should `arena/live.html` be used for test sessions.
+
+**Important limitations:** Testing against the actual Firebase project, deploying rules, verifying realtime behavior between physical devices, authenticating existing trainers, and collecting real employee records are **not done**. The existing pilot does not satisfy production security or gameplay requirements. It assumes a separate audit and staging validation.
+
+### Why not connect the local scoring engine directly?
+The local scorer trusts the browser. A trainee can manipulate browser code or write attempts. Reliable official points, outcomes, audit trails, anti-cheat, and cross-device conflict resolution need server-trusted enforcement (and a design that fits free-tier resources). Until that exists, the live pilot deliberately does not award points.
