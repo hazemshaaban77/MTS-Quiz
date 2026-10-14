@@ -80,3 +80,9 @@ These additions **have not been tested against an actual Firebase Emulator or cl
 - `team-engine.mjs` and `team-engine.test.mjs` introduce immutable sum/average team standings; transfers during an active question are pending until closure and can be cancelled before execution. Individual earned points move with the trainee. Fixed-preset team scoring is not implemented in this module.
 - **Still outstanding:** complete trainer editors for all game types, full activity-specific live UX, encrypted/private grading authority and backend integration, QR-stable authenticated joins, team changes inside actual Firebase sessions, results permissions and projection, reports/export, templates, saved library, session archival and organization-based retention, and end-to-end tests with actual devices.
 - No production site has been deployed. The existing Firebase project is unchanged.
+
+## Iteration 8 — Saved activity queue (local-only)
+- `queue-engine.mjs` stores a versioned, immutable upcoming activity queue; enforces max three activity levels, supports nested depth-first progression, inserting previously saved activity trees at next/end/selected position, discarding the active activity, and skipping an entire unstarted parent tree.
+- Queue operations reject stale version numbers or attempts to skip a parent that already started; skipped items remain in history and cannot be restored directly.
+- `queue-engine.test.mjs` covers ordering, nested skips, immutable active items, saved insertions and version conflicts.
+- **Not yet connected to Firebase, trainer controls or live multi-trainer concurrency.** These are business-logic building blocks and not a working production session queue.
