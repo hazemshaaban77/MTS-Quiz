@@ -68,7 +68,7 @@ function render(){
     }
     return;
   }
-  const ph=C.phase,k=ph+C.i;
+  const ph=C.phase,k=ph+C.i+(ph==="q"?":"+C.t0:"");
   if(ph==="q"){if(lastKey!==k){lastKey=k;buildQ()}return}
   clearInterval(TM);
   const first=lastKey!==k;lastKey=k;
