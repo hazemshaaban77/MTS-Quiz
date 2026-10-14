@@ -62,7 +62,7 @@
               ".read": "auth != null && (auth.uid === $uid || root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true)",
               ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('arenaV1/participants').child($roomId).child(auth.uid).exists() && root.child('arenaV1/rooms').child($roomId).child('public/status').val() === 'question' && root.child('arenaV1/rooms').child($roomId).child('public/round').val() === $round && root.child('arenaV1/participants').child($roomId).child(auth.uid).child('joinedRound').val() !== $round && now <= root.child('arenaV1/rooms').child($roomId).child('public/deadline').val()",
               ".validate": "newData.hasChildren(['choice'])",
-              "choice": {".validate":"newData.isNumber() && newData.val() >= 0 && newData.val() < root.child('arenaV1/rooms').child($roomId).child('public/options').numChildren()"},
+              "choice": {".validate":"newData.isNumber() && newData.val() >= 0 && newData.val() < 8 && root.child('arenaV1/rooms').child($roomId).child('public/options').child(newData.val() + '').exists()"},
               "$other": {".validate":false}
             }
           }
