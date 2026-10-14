@@ -63,3 +63,12 @@ The local scorer trusts the browser. A trainee can manipulate browser code or wr
 - Test workflow includes projector syntax checks and added regression assertions for late-join rules.
 
 These additions **have not been tested against an actual Firebase Emulator or cloud database**, and reference rules must undergo emulator testing, existing rules compatibility review and staging verification before any real employee data or live deployment. The security tests perform structural assertions, not proof of enforcement. No Firebase configuration or production branch was altered.
+
+## Iteration 5 — Actual Firebase emulator checks and trusted grading contract
+
+- `security.emulator.test.mjs` uses the Firebase Realtime Database emulator to assert that anonymous users cannot read private trainer data, ordinary users cannot self-appoint as trainers, claims are immutable, participant identities are private, late arrivals must wait a round, and answers are one-time and deadline-checked.
+- `firebase.emulator.json` and `package.json` configure a **local test-only emulator** for the isolated reference rules; the tests do not require or modify the real Firebase account.
+- `trusted/scoring.mjs` and `trusted/scoring.test.mjs` supply a standalone scoring contract for grading sealed rounds using private answer keys, rejecting duplicate submissions and replayed scoring events, and recomputing totals when an activity is discarded.
+- GitHub Actions now runs JavaScript tests and an actual database emulator policy suite. Check the workflow status; code checked in **does not imply all tests passed**.
+- **CRITICAL:** Trusted grading is *not deployed and not wired into the Firebase room pilot*. Browser scoring is not authoritative. A trusted server execution service or an equivalent secure design still needs selection, with clear review of free-tier limits.
+- The existing Firebase project configuration, database rules and legacy quiz remain unchanged. The reference rules **must never be merged over existing production rules without an audit**.
