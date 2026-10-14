@@ -36,7 +36,8 @@ test("per-user profile restricted, answer choices numeric and bounded",()=>{
  const p=arena.participants.$roomId.$uid;
  assert.match(p[".read"],/auth\.uid === \$uid/);
  const c=arena.answers.$roomId.$round.$uid.choice[".validate"];
- assert.match(c,/numChildren/);
+ assert.match(c,/public\/options/);
+ assert.match(c,/\.exists\(\)/);
 });
 
 test("late joiners cannot submit an answer to the round in which they joined",()=>{
