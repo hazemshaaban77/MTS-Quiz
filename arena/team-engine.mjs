@@ -5,7 +5,7 @@ const unique=items=>new Set(items).size===items.length;
 export function createTeams(teamNames,participants,mode="sum"){
  valid(Array.isArray(teamNames)&&teamNames.length>=2&&teamNames.length<=20&&teamNames.every(x=>typeof x==="string"&&x.trim())&&unique(teamNames),"Invalid teams");
  valid(Array.isArray(participants)&&unique(participants.map(x=>x.id)),"Duplicate participants");
- valid(["sum","average","fixed"].includes(mode),"Invalid team scoring method");
+ valid(["sum","average"].includes(mode),"Invalid team scoring method");
  valid(participants.every(p=>typeof p.id==="string"&&p.id&&Number.isFinite(p.score)&&p.score>=0&&(p.team===null||teamNames.includes(p.team))),"Invalid participant");
  return {teamNames:[...teamNames],participants:clone(participants),pending:{},mode,events:[]};
 }
