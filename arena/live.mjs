@@ -77,7 +77,8 @@ function trainerHome(){
 function trainerRoom(){
   cleanup();
   const link=new URL("./live.html",location.href);link.searchParams.set("room",room);
-  show('<h2>Trainer Room</h2><p>Room: <code>'+esc(room)+'</code></p><div class="field"><label>One participation link (share as QR if desired)</label><input id="link" readonly value="'+esc(link.href)+'"></div><p class="note">Do not use this for live training until Firebase rules are installed and audited. Avoid real employee IDs during initial tests.</p><div class="actions"><button id="open" class="btn green">Start Next Question</button><button id="close" class="btn secondary">Close Question</button><button id="complete" class="btn danger">Complete Pilot</button></div><h3 id="phase"></h3><p id="question"></p><h3>Answer counts (trainer only)</h3><div id="counts"></div><p id="notice" class="note"></p>');
+  show('<h2>Trainer Room</h2><p>Room: <code>'+esc(room)+'</code></p><div class="field"><label>One participation link (share as QR if desired)</label><input id="link" readonly value="'+esc(link.href)+'"></div><div id="qr" style="margin:12px 0"></div><p class="note">Do not use this for live training until Firebase rules are installed and audited. Avoid real employee IDs during initial tests.</p><div class="actions"><button id="open" class="btn green">Start Next Question</button><button id="close" class="btn secondary">Close Question</button><button id="complete" class="btn danger">Complete Pilot</button></div><h3 id="phase"></h3><p id="question"></p><h3>Answer counts (trainer only)</h3><div id="counts"></div><p id="notice" class="note"></p>');
+  if(typeof QRCode!=="undefined")new QRCode(document.getElementById("qr"),{text:link.href,width:180,height:180});
   const pre="arenaV1/rooms/"+room;
   listen(pre+"/public",snap=>{publicState=snap.val();if(!publicState)return;
     document.getElementById("phase").textContent=publicState.status+" • round "+publicState.round;
