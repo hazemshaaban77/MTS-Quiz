@@ -19,7 +19,7 @@
             ".validate": "newData.hasChildren(['title', 'status', 'round', 'question', 'options', 'deadline', 'joinOpen'])",
             "title": {".validate":"newData.isString() && newData.val().length <= 120"},
             "status": {".validate":"newData.isString() && (newData.val() === 'lobby' || newData.val() === 'question' || newData.val() === 'between' || newData.val() === 'completed')"},
-            "round": {".validate":"newData.isNumber() && newData.val() >= 0"},
+            "round": {".validate":"newData.isString() && newData.val().matches(/^r[0-9]+$/)"},
             "question": {".validate":"newData.isString() && newData.val().length <= 1000"},
             "options": {".validate":"newData.hasChildren(['0', '1'])"},
             "deadline": {".validate":"newData.isNumber() && newData.val() >= 0"},
@@ -58,7 +58,7 @@
           "$round": {
             "$uid": {
               ".read": "auth != null && (auth.uid === $uid || root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true)",
-              ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('arenaV1/participants').child($roomId).child(auth.uid).exists() && root.child('arenaV1/rooms').child($roomId).child('public/status').val() === 'question' && root.child('arenaV1/rooms').child($roomId).child('public/round').val() === +$round && now <= root.child('arenaV1/rooms').child($roomId).child('public/deadline').val()",
+              ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('arenaV1/participants').child($roomId).child(auth.uid).exists() && root.child('arenaV1/rooms').child($roomId).child('public/status').val() === 'question' && root.child('arenaV1/rooms').child($roomId).child('public/round').val() === $round && now <= root.child('arenaV1/rooms').child($roomId).child('public/deadline').val()",
               ".validate": "newData.hasChildren(['choice'])",
               "choice": {".validate":"newData.isNumber() && newData.val() >= 0 && newData.val() < root.child('arenaV1/rooms').child($roomId).child('public/options').numChildren()"},
               "$other": {".validate":false}
