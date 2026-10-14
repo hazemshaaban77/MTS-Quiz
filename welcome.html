@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTS Training Arena | ساحة التدريب</title>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#0D2342;--blue:#1B498A;--green:#0E7A45;--ink:#f8fafc;--muted:#bdcce2}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 85% 12%,#1b498a88,transparent 37%),var(--bg);color:var(--ink);font-family:"Readex Pro",sans-serif}
+main{width:min(100% - 32px,1000px);margin:auto;padding:32px 0 70px}
+header{display:flex;align-items:center;justify-content:space-between;gap:18px;background:white;border-radius:16px;padding:15px 24px;border-top:4px solid #4b86ef}
+header img{height:35px;max-width:125px;object-fit:contain}
+.hero{text-align:center;padding:74px 0 37px}
+.eyebrow{font-size:14px;color:#9bdab4;letter-spacing:.06em}
+h1{font-size:clamp(27px,5vw,48px);line-height:1.4;margin:15px 0}
+p{color:var(--muted);line-height:1.9;margin:0}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:26px}
+.card{display:flex;flex-direction:column;gap:14px;padding:28px 22px;border:1px solid #40618b;background:#ffffff0d;border-radius:19px;text-decoration:none;color:var(--ink);transition:transform .2s,border-color .2s,background .2s}
+.card:hover,.card:focus-visible{transform:translateY(-4px);border-color:#7ac7fd;background:#ffffff18;outline:none}
+.symbol{font-size:34px}h2{font-size:19px;margin:0}.card p{font-size:14px;flex:1}.cta{color:#a5edc4;font-weight:700}
+footer{text-align:center;margin-top:50px;color:#91a8c5;font-size:12px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}.hero{padding:48px 0 22px}header{padding:12px 17px}}
+</style>
+</head>
+<body><main>
+<header><img src="mts.png" alt="MTS"><img src="training.png" alt="Training Team"></header>
+<section class="hero"><div class="eyebrow">MTS / NAFEZA TRAINING TEAM</div><h1>ساحة التدريب التفاعلية</h1><p>اختار طريقة الدخول المناسبة لك لبدء تجربة التدريب المباشر.</p></section>
+<nav class="grid" aria-label="طرق الدخول">
+<a class="card" href="instructor.html"><div class="symbol" aria-hidden="true">🎯</div><h2>لوحة المدرب</h2><p>إنشاء المسابقة، إدارة الغرفة، تشغيل الأسئلة ومتابعة المشاركين والنتائج.</p><span class="cta">دخول لوحة المدرب ←</span></a>
+<a class="card" href="screen.html"><div class="symbol" aria-hidden="true">📺</div><h2>شاشة العرض</h2><p>تُفتح من رابط الغرفة الذي يجهزه المدرب أثناء الجلسة.</p><span class="cta">فتح شاشة العرض ←</span></a>
+<a class="card" href="index.html"><div class="symbol" aria-hidden="true">📱</div><h2>دخول المتدرب</h2><p>انضم من رابط أو رمز QR للغرفة التي يفتحها المدرب.</p><span class="cta">الدخول برابط الغرفة ←</span></a>
+</nav><footer>MTS Training Arena</footer>
+</main></body></html>
