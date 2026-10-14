@@ -72,3 +72,11 @@ These additions **have not been tested against an actual Firebase Emulator or cl
 - GitHub Actions now runs JavaScript tests and an actual database emulator policy suite. Check the workflow status; code checked in **does not imply all tests passed**.
 - **CRITICAL:** Trusted grading is *not deployed and not wired into the Firebase room pilot*. Browser scoring is not authoritative. A trusted server execution service or an equivalent secure design still needs selection, with clear review of free-tier limits.
 - The existing Firebase project configuration, database rules and legacy quiz remain unchanged. The reference rules **must never be merged over existing production rules without an audit**.
+
+## Iteration 7 — All eleven activity types and team rules (local-only)
+- `activity-contract.mjs` validates and locally evaluates all **11 approved activity types**. Live Poll has no correct answer; Spin Wheel, Open the Box and Flashcards are ungraded presentation activities until an explicit activity reward is defined.
+- `games.html` + `activity-lab.mjs` provide a **one-device interactive gallery** for every game type, accessible from the preview Dashboard. This is not a live multi-user engine and does not include complete cinematic animations or game-specific team workflows.
+- `activity-contract.test.mjs` exercises correct/incorrect answers, input validation, outcome reveals, 3-level nesting, and competition ranking (1,1,3).
+- `team-engine.mjs` and `team-engine.test.mjs` introduce immutable sum/average team standings; transfers during an active question are pending until closure and can be cancelled before execution. Individual earned points move with the trainee. Fixed-preset team scoring is not implemented in this module.
+- **Still outstanding:** complete trainer editors for all game types, full activity-specific live UX, encrypted/private grading authority and backend integration, QR-stable authenticated joins, team changes inside actual Firebase sessions, results permissions and projection, reports/export, templates, saved library, session archival and organization-based retention, and end-to-end tests with actual devices.
+- No production site has been deployed. The existing Firebase project is unchanged.
