@@ -35,8 +35,8 @@
       "claims": {
         "$roomId": {
           "$employeeId": {
-            ".read": "auth != null && (data.val() === auth.uid || root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true)",
-            ".write": "auth != null && !data.exists() && newData.isString() && newData.val() === auth.uid && $employeeId.matches(/^[A-Z0-9_-]{2,20}$/)",
+            ".read": "auth != null && (!data.exists() || data.val() === auth.uid || root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true)",
+            ".write": "auth != null && !data.exists() && newData.isString() && newData.val() === auth.uid && $employeeId.matches(/^[A-Z0-9_-]{2,20}$/) && root.child('arenaV1/rooms').child($roomId).child('public/joinOpen').val() === true",
             ".validate": "newData.isString()"
           }
         }
