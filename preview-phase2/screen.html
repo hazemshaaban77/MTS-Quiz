@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Arena</title>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="../firebase-config.js"></script>
+<script src="../common.js"></script>
+<script src="../i18n.js"></script>
+<style>
+body.screen{font-size:clamp(18px,2.3vw,34px);overflow-x:hidden}
+.logos{position:fixed;top:1.2vh;inset-inline-start:1.5vw;display:flex;gap:1vw;background:#fff;border-radius:14px;padding:.4em .8em}
+.logos img{height:2.2em}
+body.screen .lg{position:fixed;top:1.2vh;inset-inline-end:1.5vw;opacity:.7;z-index:5}
+#app{max-width:1600px;margin:0 auto;padding:6vh 3vw 2vh}
+.stage{min-height:80vh;display:flex;flex-direction:column;justify-content:center;gap:.5em;animation:in .35s ease-out}
+@keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pulse{50%{transform:scale(1.12)}}
+.title{font-size:2.3em;font-weight:700;text-align:center;line-height:1.3}
+.sub{color:var(--mute);text-align:center}
+.join{display:flex;gap:3vw;align-items:center;justify-content:center;margin:.6em 0}
+.qrbox{background:#fff;padding:14px;border-radius:18px}
+.code{font-size:3.4em;font-weight:700;letter-spacing:.08em;text-align:center}
+.names{text-align:center;max-height:22vh;overflow:hidden}
+.row2{display:flex;justify-content:space-between;align-items:center}
+.clock{font-size:3em;font-weight:700;font-variant-numeric:tabular-nums;color:var(--p)}
+.clock.low{color:var(--bad);animation:pulse .5s infinite}
+.tbar.big{height:1.1vh;min-height:8px}
+.qbox{font-size:1.9em;font-weight:700;line-height:1.45;margin:.2em 0 .5em}
+.qbox.sm{font-size:1.25em;margin:.1em 0 .3em}
+.split .tile{font-size:.82em;padding:.4em .7em;border-width:2px}.split .tile b{width:1.5em;height:1.5em}.split .grid{gap:.5vw}.split .expl{font-size:.8em;margin-top:.5em}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2vw}
+.grid.one{grid-template-columns:1fr}
+.tile{display:flex;align-items:center;gap:.6em;padding:.7em .9em;border-radius:18px;background:var(--card);border:3px solid var(--line);font-size:1.1em;font-weight:500;transition:opacity .3s}
+.tile b{flex:none;width:1.7em;height:1.7em;border-radius:50%;background:var(--soft);display:grid;place-items:center}
+.tile .tx{flex:1}.tile .ct{font-size:.8em;color:var(--mute)}
+.tile.ok{border-color:var(--g);background:var(--okbg)}
+.tile.dim{opacity:.45}
+.expl{margin-top:.7em;padding:.7em .9em;border-radius:14px;background:var(--card);border:2px solid var(--line)}
+.split{display:grid;grid-template-columns:1.1fr .9fr;gap:2.5vw}.split.one{grid-template-columns:1fr}
+.lbx{position:relative;overflow:hidden;--rh:1.9em;--gap:.3em;height:calc(var(--n)*(var(--rh) + var(--gap)))}
+.lrow{position:absolute;inset-inline:0;top:0;height:var(--rh);display:flex;align-items:center;gap:.5em;padding:0 .7em;border-radius:14px;background:var(--card);border:3px solid var(--line);transform:translateY(calc(var(--i)*(var(--rh) + var(--gap))));transition:transform .9s cubic-bezier(.3,.8,.3,1)}
+.lrow.t1{border-color:#F5C542}.lrow.t2{border-color:#C0C8D8}.lrow.t3{border-color:#D98B4E}
+.rb{width:1.5em;text-align:center;font-weight:700}
+.lrow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl{font-size:.7em;color:var(--mute);min-width:3em;text-align:center}.dl.up{color:var(--g)}.dl.dn{color:var(--bad)}
+.sc{font-weight:700;font-variant-numeric:tabular-nums;min-width:3em;text-align:end}
+.pod{display:flex;align-items:flex-end;justify-content:center;gap:2vw;height:46vh;margin:1em 0 .5em}
+.pc{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:24%}
+.pn{font-weight:700;text-align:center}.ps{color:var(--mute)}
+.pb{width:100%;border-radius:16px 16px 0 0;background:var(--card);border:3px solid var(--line);text-align:center;font-weight:700;font-size:1.6em;animation:rise .8s cubic-bezier(.3,.8,.3,1)}
+.p1 .pb{height:26vh;border-color:#F5C542}.p2 .pb{height:18vh;border-color:#C0C8D8}.p3 .pb{height:12vh;border-color:#D98B4E}
+@keyframes rise{from{height:0}}
+@media (prefers-reduced-motion:reduce){.stage,.pb{animation:none}.lrow{transition:none}.clock.low{animation:none}}
+</style>
+</head>
+<body class="live screen">
+<div class="logos"><img src="../mts.png" alt="MTS"><img src="../training.png" alt="Training Team"></div>
+<button id="lg" class="lg"></button>
+<div id="app"></div>
+<script>
+const $=id=>document.getElementById(id),app=$("app"),R=roomId(),RM=matchMedia("(prefers-reduced-motion:reduce)").matches,MAXR=8;
+let C,P={},QS=[],RES={},META={},CN={},lastKey="",TM,MK="",started=0;
+const msg=k=>{MK=k;lastKey="";clearInterval(TM);app.innerHTML=`<div class="stage"><div class="title">${t(k)}</div></div>`};
+$("lg").textContent=t("lang");
+$("lg").onclick=()=>{toggleLang();$("lg").textContent=t("lang");lastKey="";MK?msg(MK):(C&&render())};
+if(!R)msg("screen_bad");
+else auth.onAuthStateChanged(u=>{if(u){if(!started){started=1;listen()}}else auth.signInAnonymously().catch(()=>msg("offline"))});
+function listen(){
+  db.ref("rooms/"+R).on("value",s=>{
+    const d=s.val();if(!d||!d.ctl){msg("no_room");return}
+    MK="";C=d.ctl;P=d.players||{};QS=d.qs||[];RES=d.res||{};META=d.meta||{};CN=d.cnt||{};render();
+  },()=>msg("no_access"));
+}
+const tiles=(q,cn,correct)=>{
+  const tot=Math.max(1,[0,1,2,3].reduce((a,j)=>a+(cn?cn[j]||0:0),0));
+  return q.o.map((o,k)=>`<div class="tile${correct===undefined?"":k===correct?" ok":" dim"}"><b>${k===correct?"✓":LETS()[k]}</b><span class="tx">${esc(o)}</span>${cn?`<span class="ct">${cn[k]||0} · ${Math.round((cn[k]||0)/tot*100)}%</span>`:""}</div>`).join("");
+};
+function count(el,a,b,ms){
+  if(RM||a===b){el.textContent=b;return}
+  const t0=performance.now();(function f(n){const p=Math.min(1,(n-t0)/ms);el.textContent=Math.round(a+(b-a)*p);if(p<1)requestAnimationFrame(f)})(t0);
+}
+function lbCalc(){
+  const i=C.i,n=C.n;let j=i-1;while(j>=0&&!lbShow(META,j,n))j--;
+  const w=i-j;
+  const cur=Object.entries(P).map(([u,p])=>{let g=0;for(let x=i-w+1;x<=i;x++){const r=(RES[x]||{})[u];if(r>0)g+=r}const s=p.score||0;return{u,n:p.name||"",s,p0:s-g}});
+  const rk=key=>{const o=[...cur].sort((a,b)=>b[key]-a[key]||a.n.localeCompare(b.n)),r={};o.forEach((x,q)=>{r[x.u]=q});return r};
+  return{cur,r0:rk("p0"),r1:rk("s")};
+}
+function drawLb(){
+  const {cur,r0,r1}=lbCalc(),box=$("lbx");
+  box.style.setProperty("--n",Math.max(1,Math.min(MAXR,cur.length)));
+  box.innerHTML=cur.map(x=>`<div class="lrow" data-u="${x.u}" style="--i:${RM?r1[x.u]:r0[x.u]}"><span class="rb">${(RM?r1:r0)[x.u]+1}</span><span class="nm">${esc(x.n)}</span><span class="dl"></span><b class="sc">${RM?x.s:x.p0}</b></div>`).join("");
+  const go=()=>box.querySelectorAll(".lrow").forEach(el=>{
+    const x=cur.find(c=>c.u===el.dataset.u),a=r0[x.u],b=r1[x.u],d=a-b;
+    el.style.setProperty("--i",b);el.querySelector(".rb").textContent=b+1;
+    if(b<3)el.classList.add("t"+(b+1));
+    const dl=el.querySelector(".dl");dl.textContent=d>0?"▲ "+d:d<0?"▼ "+(-d):"–";dl.classList.add(d>0?"up":d<0?"dn":"x");
+    count(el.querySelector(".sc"),x.p0,x.s,900);
+  });
+  if(RM)go();else requestAnimationFrame(()=>requestAnimationFrame(go));
+}
+function render(){
+  const ph=C.phase,k=ph+C.i,first=lastKey!==k;
+  if(ph==="lobby"){
+    if(first){
+      lastKey=k;clearInterval(TM);
+      const u=new URL("index.html",location.href);u.searchParams.set("room",R);
+      app.innerHTML=`<div class="stage"><div class="title">${esc(META.title||t("brand"))}</div><div class="sub">${t("scan")}</div><div class="join"><div class="qrbox" id="qr"></div><div><div class="sub">${t("room_code")}</div><div class="code" dir="ltr">${esc(R)}</div><div class="sub" id="pc"></div></div></div><div class="names" id="pl"></div></div>`;
+      if(window.QRCode)new QRCode($("qr"),{text:u.href,width:260,height:260});
+    }
+    $("pc").textContent=t("players")+": "+Object.keys(P).length;
+    $("pl").innerHTML=Object.values(P).map(p=>`<span class="tag">${esc(p.name||"")}</span>`).join("");
+  }else if(ph==="q"){
+    if(first){
+      lastKey=k;
+      const q=QS[C.i]||{q:"",o:[]},lim=C.lim,t0=C.t0;
+      app.innerHTML=`<div class="stage"><div class="row2"><div class="sub">${t("q_of",{i:C.i+1,n:C.n})}</div><div class="clock" id="cl">${lim}</div></div><div class="tbar big"><i id="tb"></i></div><div class="qbox">${esc(q.q)}</div><div class="grid">${tiles(q)}</div><div class="sub" id="ac"></div></div>`;
+      clearInterval(TM);
+      TM=setInterval(()=>{const left=Math.max(0,lim-(now()-t0)/1000),c=$("cl");if(!c)return;c.textContent=Math.ceil(left);c.classList.toggle("low",left<=lim*.27);$("tb").style.width=left/lim*100+"%"},200);
+    }
+    $("ac").textContent=t("answered",{a:C.ac||0,n:Object.keys(P).length});
+  }else if(ph==="rev"){
+    if(!first)return;lastKey=k;clearInterval(TM);
+    const i=C.i,q=QS[i]||{q:"",o:[]},show=lbShow(META,i,C.n);
+    app.innerHTML=`<div class="stage"><div class="sub">${t("results")} ${i+1}/${C.n}</div><div class="qbox sm">${esc(q.q)}</div><div class="split${show?"":" one"}"><div><div class="grid one">${tiles(q,CN[i]||[0,0,0,0],C.correct)}</div>${C.expl?`<div class="expl">💡 ${esc(C.expl)}</div>`:""}</div>${show?`<div><div class="lbx" id="lbx"></div></div>`:""}</div></div>`;
+    if(show)drawLb();
+  }else if(ph==="end"){
+    if(!first)return;lastKey=k;clearInterval(TM);
+    const o=Object.values(P).map(p=>({n:p.name||"",s:p.score||0})).sort((a,b)=>b.s-a.s),top=o.slice(0,3);
+    app.innerHTML=`<div class="stage"><div class="title">${t("champions")} 🏆</div><div class="pod">${[1,0,2].map(x=>top[x]?`<div class="pc p${x+1}"><div class="pn">${esc(top[x].n)}</div><div class="ps">${top[x].s}</div><div class="pb">${x+1}</div></div>`:"").join("")}</div>${o.slice(3,8).map((x,q)=>`<div class="sub">${q+4}. ${esc(x.n)} — ${x.s}</div>`).join("")}</div>`;
+    if(window.confetti&&!RM)confetti({particleCount:200,spread:90,origin:{y:.6}});
+  }
+}
+</script>
+</body>
+</html>
