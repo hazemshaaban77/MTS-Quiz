@@ -15,16 +15,32 @@
           ".write": false,
           "public": {
             ".read": "auth != null",
-            ".write": "auth != null && root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true",
-            ".validate": "newData.hasChildren(['title', 'status', 'round', 'question', 'options', 'deadline', 'joinOpen'])",
-            "title": {".validate":"newData.isString() && newData.val().length <= 120"},
-            "status": {".validate":"newData.isString() && (newData.val() === 'lobby' || newData.val() === 'question' || newData.val() === 'between' || newData.val() === 'completed')"},
-            "round": {".validate":"newData.isString() && newData.val().matches(/^r[0-9]+$/)"},
-            "question": {".validate":"newData.isString() && newData.val().length <= 1000"},
-            "options": {".validate":"newData.hasChildren(['0', '1'])"},
-            "deadline": {".validate":"newData.isNumber() && newData.val() >= 0"},
-            "joinOpen": {".validate":"newData.isBoolean()"},
-            "$other": {".validate":false}
+            ".write": "auth != null && root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true && newData.exists() && (!data.exists() || data.child('status').val() !== 'completed')",
+            ".validate": "newData.hasChildren(['title', 'status', 'round', 'question', 'options', 'deadline', 'joinOpen']) (!data.exists() ||  (data.child('status').val() === 'lobby' && (newData.child('status').val() === 'lobby' || newData.child('status').val() === 'question' || newData.child('status').val() === 'completed')) ||  (data.child('status').val() === 'question' && (newData.child('status').val() === 'between' || newData.child('status').val() === 'completed')) ||  (data.child('status').val() === 'between' && (newData.child('status').val() === 'question' || newData.child('status').val() === 'completed'))) && (newData.child('status').val() !== 'completed' || newData.child('joinOpen').val() === false) && (!data.exists() || data.child('status').val() !== 'question' || (newData.child('round').val() === data.child('round').val() && newData.child('question').val() === data.child('question').val() && newData.child('deadline').val() === data.child('deadline').val())) && (!data.exists() || data.child('status').val() !== 'between' || newData.child('status').val() !== 'question' || newData.child('round').val() !== data.child('round').val())",
+            "title": {
+              ".validate": "newData.isString() && newData.val().length <= 120"
+            },
+            "status": {
+              ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'question' || newData.val() === 'between' || newData.val() === 'completed')"
+            },
+            "round": {
+              ".validate": "newData.isString() && newData.val().matches(/^r[0-9]+$/)"
+            },
+            "question": {
+              ".validate": "newData.isString() && newData.val().length <= 1000"
+            },
+            "options": {
+              ".validate": "newData.hasChildren(['0', '1'])"
+            },
+            "deadline": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
+            "joinOpen": {
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": {
+              ".validate": false
+            }
           },
           "private": {
             ".read": "auth != null && root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true",
@@ -47,10 +63,18 @@
             ".read": "auth != null && (auth.uid === $uid || root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true)",
             ".write": "auth != null && (root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true || (auth.uid === $uid && !data.exists() && root.child('arenaV1/rooms').child($roomId).child('public/joinOpen').val() === true && root.child('arenaV1/claims').child($roomId).child(newData.child('employeeId').val()).val() === auth.uid && newData.child('joinedRound').val() === root.child('arenaV1/rooms').child($roomId).child('public/round').val()))",
             ".validate": "newData.hasChildren(['name', 'employeeId', 'joinedRound'])",
-            "name": {".validate":"newData.isString() && newData.val().length >= 2 && newData.val().length <= 60"},
-            "employeeId": {".validate":"newData.isString() && newData.val().matches(/^[A-Z0-9_-]{2,20}$/)"},
-            "joinedRound": {".validate":"newData.isString() && newData.val().matches(/^r[0-9]+$/)"},
-            "$other": {".validate":false}
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 60"
+            },
+            "employeeId": {
+              ".validate": "newData.isString() && newData.val().matches(/^[A-Z0-9_-]{2,20}$/)"
+            },
+            "joinedRound": {
+              ".validate": "newData.isString() && newData.val().matches(/^r[0-9]+$/)"
+            },
+            "$other": {
+              ".validate": false
+            }
           }
         }
       },
@@ -62,8 +86,12 @@
               ".read": "auth != null && (auth.uid === $uid || root.child('arenaV1/trainerAllowlist').child(auth.uid).val() === true)",
               ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('arenaV1/participants').child($roomId).child(auth.uid).exists() && root.child('arenaV1/rooms').child($roomId).child('public/status').val() === 'question' && root.child('arenaV1/rooms').child($roomId).child('public/round').val() === $round && root.child('arenaV1/participants').child($roomId).child(auth.uid).child('joinedRound').val() !== $round && now <= root.child('arenaV1/rooms').child($roomId).child('public/deadline').val()",
               ".validate": "newData.hasChildren(['choice'])",
-              "choice": {".validate":"newData.isNumber() && newData.val() >= 0 && newData.val() < 8 && root.child('arenaV1/rooms').child($roomId).child('public/options').child(newData.val() + '').exists()"},
-              "$other": {".validate":false}
+              "choice": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 8 && root.child('arenaV1/rooms').child($roomId).child('public/options').child(newData.val() + '').exists()"
+              },
+              "$other": {
+                ".validate": false
+              }
             }
           }
         }
