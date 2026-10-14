@@ -29,7 +29,7 @@ function descendants(tree,id){
 export function skipUpcoming(state,id,expectedVersion){
  checkVersion(state,expectedVersion);
  const ids=descendants(state.tree,id);
- ok(ids.some(x=>state.upcoming.includes(x)),"Already started or skipped");
+ ok(state.upcoming.includes(id),"Activity must be completely unstarted to skip its subtree");
  ok(!ids.includes(state.current),"Cannot skip active subtree");
  const next=clone(state),existing=new Set(next.upcoming);
  const skipped=ids.filter(x=>existing.has(x));
