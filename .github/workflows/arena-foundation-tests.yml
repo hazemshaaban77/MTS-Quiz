@@ -25,8 +25,10 @@ jobs:
           node --check arena/live.mjs
           node --check arena/projector.mjs
           node --check arena/activity-contract.mjs
-          node --check arena/activity-contract.test.mjs
+          node --check arena/activity-contract.test.mjs arena/team-engine.test.mjs
           node --check arena/activity-lab.mjs
+          node --check arena/team-engine.mjs
+          node --check arena/team-engine.test.mjs
           node --check arena/security.emulator.test.mjs
           node --check arena/trusted/scoring.mjs
           node --check arena/trusted/scoring.test.mjs
