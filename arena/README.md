@@ -22,3 +22,13 @@ GitHub Pages can serve these static assets. Realtime Database Spark has a limit 
 
 ## Safety
 This prototype never writes to Firebase. Original legacy pages and their Firebase configuration are unmodified.
+
+## Local round simulator (iteration 2)
+Open `arena/simulator.html` using a local HTTP static server or the branch preview.
+- Uses saved drafts from the Studio if they contain a supported Quiz, Live Poll, or Dropdown activity.
+- Otherwise provides three example rounds.
+- Simulates two participants on the **same browser**, duplicate-answer prevention, pause/resume, fixed 100-point correct answer, poll counts, competition ranking, and discard of the current activity on session completion.
+- There is **no actual Firebase connection**, cross-device joining, registration QR, live scoring authority, session persistence, or authenticated trainer account.
+- Run engine tests with `node --test arena/engine.test.mjs`. The branch includes a GitHub Actions syntax/unit-test workflow.
+
+Keep the feature branch unmerged until reviewed. No production deployment has been made.
