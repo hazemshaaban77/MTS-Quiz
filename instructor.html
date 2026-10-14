@@ -22,9 +22,9 @@
 <script>
 const $=id=>document.getElementById(id),app=$("app"),SV=firebase.database.ServerValue;
 const STOP='<button class="btn red" id="x">إنهاء الجلسة وحذف الغرفة</button>';
-let S,R,QQ,KEY,C,P={},RES={},CN={},MT={},ANS={},busy=0,refs=[],TM,lastKey="",ansRef,ansKey=-1;
+let S,R,QQ,KEY,C,P={},RES={},CN={},MT={},ANS={},busy=0,refs=[],TM,lastKey="",ansRef,ansKey=-1,nextTimer=null;
 try{S=JSON.parse(localStorage.getItem("quizSetup")||"null")}catch(e){}
-S=Object.assign({title:"",code:"",lim:30,n:0,pass:70,lock:true,lb:1,qs:[{q:"ما اسم المستند الذي يصدره الناقل ويثبت استلام البضاعة؟",o:["بوليصة الشحن","إيصال سداد","شهادة منشأ","عقد إيجار"],a:0,e:"بوليصة الشحن يصدرها الناقل وتثبت استلام البضاعة وعقد نقلها."}]},S||{});
+S=Object.assign({title:"",code:"",lim:30,n:0,pass:70,lock:true,lb:1,speed:true,auto:true,autoNext:0,qs:[{q:"ما اسم المستند الذي يصدره الناقل ويثبت استلام البضاعة؟",o:["بوليصة الشحن","إيصال سداد","شهادة منشأ","عقد إيجار"],a:0,e:"بوليصة الشحن يصدرها الناقل وتثبت استلام البضاعة وعقد نقلها."}]},S||{});
 const save=()=>{try{localStorage.setItem("quizSetup",JSON.stringify(S))}catch(e){}};
 const ss=()=>{try{localStorage.setItem("quizSession",JSON.stringify({R,QQ}))}catch(e){}};
 
@@ -37,7 +37,7 @@ function login(){
 
 function setup(){
   S.qs.forEach(x=>{while(x.o.length<4)x.o.push("");x.e=x.e||""});
-  app.innerHTML=`<h1>لوحة المدرب</h1><div id="rs"></div><div class="card"><label class="fl">عنوان المسابقة<input id="ttl" maxlength="60" value="${esc(S.title)}" placeholder="مثال: تقييم سيشن إجراءات الصادر"></label><label class="fl">كود الغرفة الثابت (حروف إنجليزي وأرقام، 3 على الأقل؛ فاضي = كود عشوائي)<input id="code" dir="ltr" maxlength="20" value="${esc(S.code)}" placeholder="nafeza1"></label><label class="fl">مدة كل سؤال بالثواني<input id="lim" type="number" min="5" max="120" value="${S.lim}"></label><label class="fl">عدد الأسئلة في الجولة (0 = كل الأسئلة)<input id="nq" type="number" min="0" value="${S.n||0}"></label><label class="fl">نسبة النجاح % (0 = بدون حد نجاح)<input id="pass" type="number" min="0" max="100" value="${S.pass}"></label><label class="fl">لوحة الصدارة: 1 = بعد كل سؤال، 0 = في النهاية فقط، أو رقم N = كل N أسئلة<input id="lb" type="number" min="0" value="${S.lb}"></label><label class="fl" style="display:flex;gap:8px;align-items:center"><input id="lk" type="checkbox" ${S.lock?"checked":""} style="width:auto;margin:0">قفل الانضمام تلقائياً بعد بدء الأسئلة</label></div><div id="qs"></div><button class="btn alt" id="add">إضافة سؤال</button><button class="btn" id="go">فتح الغرفة</button><p class="err" id="err"></p>`;
+  app.innerHTML=`<h1>لوحة المدرب</h1><div id="rs"></div><div class="card"><label class="fl">عنوان المسابقة<input id="ttl" maxlength="60" value="${esc(S.title)}" placeholder="مثال: تقييم سيشن إجراءات الصادر"></label><label class="fl">كود الغرفة الثابت (حروف إنجليزي وأرقام، 3 على الأقل؛ فاضي = كود عشوائي)<input id="code" dir="ltr" maxlength="20" value="${esc(S.code)}" placeholder="nafeza1"></label><label class="fl">مدة كل سؤال بالثواني<input id="lim" type="number" min="5" max="120" value="${S.lim}"></label><label class="fl">عدد الأسئلة في الجولة (0 = كل الأسئلة)<input id="nq" type="number" min="0" value="${S.n||0}"></label><label class="fl">نسبة النجاح % (0 = بدون حد نجاح)<input id="pass" type="number" min="0" max="100" value="${S.pass}"></label><label class="fl">لوحة الصدارة: 1 = بعد كل سؤال، 0 = في النهاية فقط، أو رقم N = كل N أسئلة<input id="lb" type="number" min="0" value="${S.lb}"></label><label class="fl">الانتقال للسؤال التالي بعد عرض النتيجة (0 = يدوي، أو بعد 5 / 10 / 15 ثانية)<select id="an"><option value="0" ${!S.autoNext?"selected":""}>يدوي</option><option value="5" ${S.autoNext===5?"selected":""}>5 ثوانٍ</option><option value="10" ${S.autoNext===10?"selected":""}>10 ثوانٍ</option><option value="15" ${S.autoNext===15?"selected":""}>15 ثانية</option></select></label><label class="fl" style="display:flex;gap:8px;align-items:center"><input id="sp" type="checkbox" ${S.speed!==false?"checked":""} style="width:auto;margin:0">مكافأة السرعة (بدونها: 1000 نقطة للإجابة الصحيحة)</label><label class="fl" style="display:flex;gap:8px;align-items:center"><input id="au" type="checkbox" ${S.auto!==false?"checked":""} style="width:auto;margin:0">إظهار نتيجة السؤال تلقائيًا عند انتهاء الوقت أو إجابة الجميع</label><label class="fl" style="display:flex;gap:8px;align-items:center"><input id="lk" type="checkbox" ${S.lock?"checked":""} style="width:auto;margin:0">قفل الانضمام تلقائياً بعد بدء الأسئلة</label></div><div id="qs"></div><button class="btn alt" id="add">إضافة سؤال</button><button class="btn" id="go">فتح الغرفة</button><p class="err" id="err"></p>`;
   const qs=$("qs");
   const draw=()=>{qs.innerHTML=S.qs.map((x,i)=>`<div class="card" data-i="${i}"><div class="top"><span>السؤال ${i+1}</span><button class="del" data-del>حذف</button></div><textarea data-f rows="2" placeholder="نص السؤال" aria-label="نص السؤال">${esc(x.q)}</textarea>${x.o.map((t,k)=>`<label class="oe"><input type="radio" name="r${i}" data-r="${k}" ${x.a===k?"checked":""} aria-label="الإجابة الصحيحة"><input type="text" data-o="${k}" value="${esc(t)}" placeholder="الاختيار ${LET[k]}"></label>`).join("")}<textarea data-e rows="2" placeholder="شرح الإجابة (اختياري، بيظهر للمتدربين بعد كل سؤال)" aria-label="شرح الإجابة">${esc(x.e)}</textarea></div>`).join("")};
   qs.oninput=e=>{const t=e.target,x=S.qs[+t.closest(".card").dataset.i];if(t.dataset.f!==undefined)x.q=t.value;else if(t.dataset.e!==undefined)x.e=t.value;else if(t.dataset.o!==undefined)x.o[+t.dataset.o]=t.value;save()};
@@ -72,7 +72,7 @@ function clean(){
 async function openRoom(){
   const L=clean();if(!L)return;
   S.lim=Math.min(Math.max(+$("lim").value|0||30,5),120);S.n=Math.max(+$("nq").value|0,0);
-  S.pass=Math.min(Math.max(+$("pass").value|0,0),100);S.lock=$("lk").checked;S.lb=$("lb").value===""?1:Math.max(+$("lb").value|0,0);
+  S.pass=Math.min(Math.max(+$("pass").value|0,0),100);S.lock=$("lk").checked;S.speed=$("sp").checked;S.auto=$("au").checked;S.autoNext=[5,10,15].includes(+$("an").value)?+$("an").value:0;S.lb=$("lb").value===""?1:Math.max(+$("lb").value|0,0);
   S.code=($("code").value||"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,20);
   if(S.code&&S.code.length<3){$("err").textContent="كود الغرفة لازم يكون 3 حروف أو أرقام على الأقل.";return}
   save();
@@ -84,19 +84,20 @@ async function openRoom(){
     QQ=sh(L).slice(0,n).map(x=>{const o=sh(x.o.map((t,k)=>({t,ok:k===x.a})));return{q:x.q,o:o.map(z=>z.t),a:o.findIndex(z=>z.ok),e:(x.e||"").trim()}});
     KEY=QQ.map(x=>x.a);
     await Promise.all(["rooms","ans","eids"].map(p=>db.ref(p+"/"+id).remove()));
-    await db.ref("rooms/"+id).set({meta:{title:S.title,pass:S.pass,lb:S.lb},qs:QQ.map(({q,o})=>({q,o})),ctl:{phase:"lobby",i:0,lim:S.lim,n:QQ.length}});
+    await db.ref("rooms/"+id).set({meta:{title:S.title,pass:S.pass,lb:S.lb,speed:S.speed,auto:S.auto,autoNext:S.autoNext},qs:QQ.map(({q,o})=>({q,o})),ctl:{phase:"lobby",i:0,lim:S.lim,n:QQ.length}});
   }catch(e){$("err").textContent="تعذّر فتح الغرفة. راجع قواعد قاعدة البيانات (Rules) وإيميل المدرب فيها.";return}
   R=id;ss();attach();
 }
 
 function attach(){
+  clearTimeout(nextTimer);nextTimer=null;
   clearInterval(TM);lastKey="";C=null;P={};RES={};CN={};MT={};ansKey=-1;
   const r=db.ref("rooms/"+R);refs=[r];
   r.on("value",s=>{
     const d=s.val();if(!d||!d.ctl)return;
     C=d.ctl;P=d.players||{};RES=d.res||{};CN=d.cnt||{};MT=d.meta||{};
     if(C.phase==="q"&&ansKey!==C.i)watchAns();
-    render();upd();
+    render();upd();scheduleNext();
   });
   TM=setInterval(tick,250);
 }
@@ -159,12 +160,25 @@ function render(){
   if($("pl"))$("pl").onclick=kick;
 }
 
+function scheduleNext(){
+  clearTimeout(nextTimer);nextTimer=null;
+  if(!C||C.phase!=="rev"||!C.revealedAt||!MT.autoNext||!Number.isFinite(+MT.autoNext))return;
+  const question=C.i,stamp=C.revealedAt,delay=Math.max(0,MT.autoNext*1000-(now()-stamp));
+  nextTimer=setTimeout(()=>{
+    nextTimer=null;
+    if(!C||C.phase!=="rev"||C.i!==question||C.revealedAt!==stamp)return;
+    if(question+1>=C.n)finish();else openQ(question+1);
+  },delay);
+}
+
 function openQ(i){
-  const u={phase:"q",i,t0:SV.TIMESTAMP,correct:null,expl:null,ac:0};
+  clearTimeout(nextTimer);nextTimer=null;
+  const u={phase:"q",i,t0:SV.TIMESTAMP,revealedAt:null,correct:null,expl:null,ac:0};
   if(i===0&&S.lock)u.lock=true;
   db.ref("rooms/"+R+"/ctl").update(u);
 }
 function finish(){
+  clearTimeout(nextTimer);nextTimer=null;
   db.ref("rooms/"+R).update({"ctl/phase":"end",key:{a:KEY,e:QQ.reduce((o,x,i)=>{if(x.e)o[i]=x.e;return o},{})}});
 }
 
@@ -173,7 +187,7 @@ function tick(){
   const el=(now()-C.t0)/1000,left=Math.max(0,C.lim-el),t=$("tt");
   if(t){t.textContent=Math.ceil(left);t.classList.toggle("low",left<=C.lim*.27);$("tb").style.width=left/C.lim*100+"%"}
   const np=Object.keys(P).length;
-  if(el>=C.lim+1.2||(np&&Object.keys(ANS).length>=np&&el>1))reveal();
+  if(MT.auto!==false&&(el>=C.lim+1.2||(np&&Object.keys(ANS).length>=np&&el>1)))reveal();
 }
 
 async function reveal(){
@@ -185,12 +199,12 @@ async function reveal(){
       if(a&&a.k>=0&&a.k<4){
         cn[a.k]++;
         const el=(a.ts-C.t0)/1000;
-        p=a.k===KEY[i]&&el<=C.lim+1.5?Math.round(500+500*(1-Math.min(Math.max(el,0),C.lim)/C.lim)):0;
+        p=a.k===KEY[i]&&el<=C.lim+1.5?(MT.speed===false?1000:Math.round(500+500*(1-Math.min(Math.max(el,0),C.lim)/C.lim))):0;
       }
       res[u]=p;
       if(p>0)up["players/"+u+"/score"]=(P[u].score||0)+p;
     });
-    up["res/"+i]=res;up["cnt/"+i]=cn;up["ctl/phase"]="rev";up["ctl/correct"]=KEY[i];up["ctl/expl"]=QQ[i].e||null;
+    up["res/"+i]=res;up["cnt/"+i]=cn;up["ctl/phase"]="rev";up["ctl/revealedAt"]=SV.TIMESTAMP;up["ctl/correct"]=KEY[i];up["ctl/expl"]=QQ[i].e||null;
     await db.ref("rooms/"+R).update(up);
   }catch(e){alert("تعذّر إظهار النتيجة، حاول تاني.")}
   busy=0;
@@ -217,6 +231,7 @@ async function exportCSV(){
 
 function endRoom(){
   if(!confirm("هتتمسح الغرفة ونتايجها نهائياً. صدّرت النتائج؟ تكمل؟"))return;
+  clearTimeout(nextTimer);nextTimer=null;
   clearInterval(TM);refs.forEach(r=>r.off());if(ansRef){ansRef.off();ansRef=null}
   const id=R;R=null;C=null;lastKey="";ansKey=-1;
   try{localStorage.removeItem("quizSession")}catch(e){}
