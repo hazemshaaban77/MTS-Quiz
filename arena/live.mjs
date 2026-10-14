@@ -67,7 +67,7 @@ function trainerHome(){
   document.getElementById("create").onclick=async()=>{
     try{
       room=id(); const title=document.getElementById("title").value.trim()||"MTS Arena Pilot";
-      const p={title,status:"lobby",round:0,question:"Ready to play",options:["Waiting","Waiting"],deadline:0,joinOpen:true};
+      const p={title,status:"lobby",round:'r0',question:"Ready to play",options:["Waiting","Waiting"],deadline:0,joinOpen:true};
       await db.ref("arenaV1/rooms/"+room+"/public").set(p);
       await db.ref("arenaV1/rooms/"+room+"/private").set({createdBy:me,createdAt:firebase.database.ServerValue.TIMESTAMP});
       trainerRoom();
@@ -89,7 +89,7 @@ function trainerRoom(){
     try{
       if(publicState?.status==="question")throw Error("Close current question first");
       if(current>=activityList.length)throw Error("No more draft activities");
-      const a=activityList[current],round=current+1;
+      const a=activityList[current],round='r'+(current+1);
       const next={title:publicState.title,status:"question",round,question:a.question,options:a.options,deadline:Date.now()+offset+a.timer*1000,joinOpen:publicState.joinOpen};
       await db.ref(pre+"/public").set(next);
       current++;
