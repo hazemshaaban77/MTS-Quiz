@@ -55,3 +55,11 @@ The new **opt-in Firebase pilot** is for carefully controlled **test-only rooms*
 
 ### Why not connect the local scoring engine directly?
 The local scorer trusts the browser. A trainee can manipulate browser code or write attempts. Reliable official points, outcomes, audit trails, anti-cheat, and cross-device conflict resolution need server-trusted enforcement (and a design that fits free-tier resources). Until that exists, the live pilot deliberately does not award points.
+
+## Iteration 4 — Late join protection & projector pilot
+- Participant registration now captures an immutable `joinedRound` from the live room. Client controls and reference Firebase security rules reject submissions to the round active when the participant joined. Admission is confirmed against the current server round; participants who join a running question wait until the next one.
+- `arena/projector.html` is a **read-only, trainer-authenticated projector pilot**. It displays live question/options with existing MTS and Training Team logos, without showing answer keys, names, employee IDs, scores or trainer analytics.
+- The trainer pilot now offers a separate projector URL. Only authenticated trainer accounts on the allowlist can use it.
+- Test workflow includes projector syntax checks and added regression assertions for late-join rules.
+
+These additions **have not been tested against an actual Firebase Emulator or cloud database**, and reference rules must undergo emulator testing, existing rules compatibility review and staging verification before any real employee data or live deployment. The security tests perform structural assertions, not proof of enforcement. No Firebase configuration or production branch was altered.
