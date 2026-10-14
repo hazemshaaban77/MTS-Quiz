@@ -1,0 +1,26 @@
+name: Arena foundation tests
+on:
+  push:
+    branches: ["feature/mts-training-arena-foundation"]
+  pull_request:
+    paths:
+      - "arena/**"
+      - ".github/workflows/arena-foundation-tests.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: |
+          node --check arena/app.js
+          node --check arena/engine.mjs
+          node --check arena/simulator.mjs
+      - name: Unit tests for local round engine
+        run: node --test arena/engine.test.mjs
