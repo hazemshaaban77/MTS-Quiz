@@ -47,12 +47,14 @@ test("late joiner cannot answer already active round",async()=>{
 });
 test("next round accepts exactly one answer and enforces privacy and deadline",async()=>{
   const now=Date.now();
+  await assertSucceeds(trainer().ref(roomPath+"/public/status").set("between"));
   await assertSucceeds(trainer().ref(roomPath+"/public").set({title:"Test Training",status:"question",round:"r2",question:"Answer?",options:["A","B"],deadline:now+120000,joinOpen:true}));
   const path=root+"/answers/"+room+"/r2/trainee-a";
   await assertSucceeds(trainee("trainee-a").ref(path).set({choice:1}));
   await assertFails(trainee("trainee-a").ref(path).set({choice:0}));
   await assertFails(outsider().ref(path).get());
   await assertSucceeds(trainer().ref(root+"/answers/"+room+"/r2").get());
+  await assertSucceeds(trainer().ref(roomPath+"/public/status").set("between"));
   await assertSucceeds(trainer().ref(roomPath+"/public").set({title:"Test Training",status:"question",round:"r3",question:"Expired",options:["A","B"],deadline:now-2000,joinOpen:true}));
   await assertFails(trainee("trainee-a").ref(root+"/answers/"+room+"/r3/trainee-a").set({choice:1}));
 });
@@ -60,4 +62,25 @@ test("participant cannot read or modify someone else's identity",async()=>{
   await assertFails(outsider().ref(root+"/participants/"+room+"/trainee-a").get());
   await assertFails(outsider().ref(root+"/participants/"+room+"/trainee-a/name").set("Impostor"));
   await assertFails(trainee("trainee-a").ref(root+"/participants/"+room+"/trainee-a/name").set("Changed"));
+});
+
+test("completed room is sealed against reopen, edits and deletion",async()=>{
+  const ref=trainer().ref(roomPath+"/public");
+  await assertSucceeds(ref.update({status:"completed",joinOpen:false}));
+  await assertFails(ref.child("status").set("question"));
+  await assertFails(ref.child("question").set("Replaced question"));
+  await assertFails(ref.remove());
+  await assertFails(ref.update({status:"lobby",joinOpen:true}));
+  await assertFails(trainee("trainee-b").ref(root+"/claims/"+room+"/TEST002").set("trainee-b"));
+});
+test("live question may not be silently replaced without closure",async()=>{
+  const otherRoom="111111111111111111111111";
+  await env.withSecurityRulesDisabled(async context=>{
+    await context.database().ref(root+"/rooms/"+otherRoom+"/public").set({title:"Another",status:"question",round:"r1",question:"Original",options:["A","B"],deadline:Date.now()+100000,joinOpen:true});
+  });
+  const ref=trainer().ref(root+"/rooms/"+otherRoom+"/public");
+  await assertFails(ref.child("question").set("Swap without closing"));
+  await assertFails(ref.child("round").set("r2"));
+  await assertFails(ref.child("deadline").set(Date.now()+500000));
+  await assertSucceeds(ref.child("status").set("between"));
 });
