@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nafeza Assessment</title>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="common.js"></script>
+<script src="i18n.js"></script>
+</head>
+<body class="live"><main>
+<div style="text-align:end"><button id="lg" class="lg"></button></div>
+<header><img src="mts.png" alt="MTS"><img src="training.png" alt="Training Team"></header>
+<div id="app"></div>
+</main>
+<script>
+const $=id=>document.getElementById(id),app=$("app"),R=roomId();
+let U,C,P={},QS=[],RES={},META={},KD={},KEYD={},MINE={},lastKey="",TM,started=0,MK="";
+const msg=k=>{MK=k;lastKey="";clearInterval(TM);app.innerHTML=`<div class="card" style="text-align:center"><p>${t(k)}</p></div>`};
+$("lg").textContent=t("lang");
+$("lg").onclick=()=>{toggleLang();$("lg").textContent=t("lang");lastKey="";MK?msg(MK):(C&&render())};
+
+if(!R)msg("bad_link");
+else auth.onAuthStateChanged(u=>{
+  if(u){U=u.uid;if(!started){started=1;listen()}}
+  else auth.signInAnonymously().catch(()=>msg("offline"));
+});
+
+function listen(){
+  db.ref("rooms/"+R).on("value",s=>{
+    const d=s.val();
+    if(!d||!d.ctl){msg("no_room");return}
+    MK="";C=d.ctl;P=d.players||{};QS=d.qs||[];RES=d.res||{};META=d.meta||{};KD=d.kicked||{};KEYD=d.key||{};render();
+  },()=>msg("no_access"));
+}
+
+function render(){
+  if(KD[U]){msg("kicked");return}
+  const me=P[U];
+  if(!me||!me.name){
+    const jk="join"+(C.lock?"L":"");
+    if(lastKey!==jk){
+      lastKey=jk;clearInterval(TM);
+      if(C.lock){app.innerHTML=`<div class="card" style="text-align:center"><p>${t("locked")}</p></div>`;return}
+      app.innerHTML=`<h1>${esc(META.title||t("brand"))}</h1><p style="text-align:center">${t("join_hint")}</p><div class="card"><input id="nm" maxlength="30" placeholder="${t("name_ph")}" autocomplete="name"><input id="id" maxlength="20" dir="ltr" placeholder="${t("id_ph")}" autocomplete="off"><button class="btn" id="jn">${t("join")}</button><p class="err" id="e"></p></div>`;
+      $("jn").onclick=()=>{
+        const n=$("nm").value.trim(),er=$("e");
+        const id=$("id").value.trim().replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).toUpperCase().replace(/[^A-Z0-9_-]/g,"");
+        if(!n||!id){er.textContent=t("need_both");return}
+        snd("tick");
+        db.ref("eids/"+R+"/"+id).set(U).then(
+          ()=>db.ref("rooms/"+R+"/players/"+U+"/name").set(n).catch(()=>{er.textContent=t("locked_join")}),
+          ()=>{er.textContent=t("id_taken")});
+      };
+    }
+    return;
+  }
+  const ph=C.phase,k=ph+C.i;
+  if(ph==="q"){if(lastKey!==k){lastKey=k;buildQ()}return}
+  clearInterval(TM);
+  const first=lastKey!==k;lastKey=k;
+  if(ph==="lobby"){
+    app.innerHTML=`<h1>${t("hello")} ${esc(me.name)} 👋</h1><div class="card" style="text-align:center"><p class="verdict ok">${t("joined")}</p><p>${t("waiting")}</p><h3>${t("players")} (${Object.keys(P).length})</h3>${Object.values(P).map(p=>`<span class="tag">${esc(p.name||"")}</span>`).join("")}</div>`;
+  }else if(ph==="rev"){
+    const i=C.i,q=QS[i],r=(RES[i]||{})[U],m=MINE[i],LT=LETS();
+    const lb=lbShow(META,i,C.n)?`<div class="card"><h3>${t("ranking")}</h3>${board(P,RES[i],U,C.n*1000)}</div>`:`<p style="text-align:center">${t("your_pts")}: <b>${me.score||0}</b></p><p style="text-align:center">${t("lb_later")}</p>`;
+    app.innerHTML=`<p class="verdict ${r>0?"ok":"bad"}">${r>0?t("right",{p:r}):r===0?t("wrong"):t("noans")}</p>${q.o.map((o,j)=>`<button class="opt ${j===C.correct?"ok":j===m?"bad":""}" disabled><b>${j===C.correct?"✓":LT[j]}</b><span>${esc(o)}</span></button>`).join("")}${C.expl?`<div class="card"><h3>${t("explain")}</h3><p style="color:var(--ink)">${esc(C.expl)}</p></div>`:""}${lb}<p style="text-align:center">${t("next_wait")}</p>`;
+    if(first)snd(r>0?"ok":"bad");
+  }else if(ph==="end"){
+    const n=C.n,a=Object.entries(P).sort((x,y)=>(y[1].score||0)-(x[1].score||0)),pos=a.findIndex(x=>x[0]===U)+1;
+    const rt=rights(RES,U,n),pct=Math.round(rt/n*100),pc=+META.pass||0,ka=KEYD.a||[],ke=KEYD.e||{};
+    const verdict=pc?(pct>=pc?`<p class="verdict ok">${t("pass_ok")}</p>`:`<p class="verdict bad">${t("pass_no",{p:pc})}</p>`):"";
+    const wrong=[];for(let i=0;i<n;i++){if(!(((RES[i]||{})[U])>0))wrong.push(i)}
+    const review=wrong.length?`<div class="card"><h3>${t("review")}</h3>${wrong.map(i=>{const q=QS[i]||{q:"",o:[]},r=(RES[i]||{})[U];return `<div class="lr"><b>${i+1}. ${esc(q.q)}</b><p>${r===-1?t("no_ans")+"<br>":MINE[i]!==undefined?t("your_ans")+esc(q.o[MINE[i]]||"")+"<br>":""}${t("correct_ans")}<b style="color:var(--g)">${esc(q.o[ka[i]]||"")}</b>${ke[i]?"<br>💡 "+esc(ke[i]):""}</p></div>`}).join("")}</div>`:`<p class="verdict ok">${t("all_ok")}</p>`;
+    app.innerHTML=`<h1>${t("end_title")}</h1>${verdict}<p class="verdict" style="color:var(--ink)">${t("rank_line",{r:pos,n:a.length,s:me.score||0})}</p><p style="text-align:center">${t("correct_line",{c:rt,n:n,p:pct})}</p>${review}<div class="card"><h3>${t("final_rank")}</h3>${board(P,null,U,n*1000)}</div>`;
+    if(first&&pos&&pos<=3&&window.confetti)confetti({particleCount:150,spread:80,origin:{y:.6}});
+  }
+}
+
+function buildQ(){
+  const i=C.i,q=QS[i],lim=C.lim,t0=C.t0,LT=LETS();let done=MINE[i]!==undefined?1:0,ls=0;
+  app.innerHTML=`<div class="top"><span>${t("q_of",{i:i+1,n:C.n})}</span></div><div class="top"><span>${t("time_left")}</span><span class="time" id="tt"></span></div><div class="tbar"><i id="tb"></i></div><h2>${esc(q.q)}</h2>${q.o.map((o,k)=>`<button class="opt${MINE[i]===k?" pick":""}" data-k="${k}"${done?" disabled":""}><b>${LT[k]}</b><span>${esc(o)}</span></button>`).join("")}<p id="st" style="text-align:center">${done?t("sent"):""}</p>`;
+  const bs=[...app.querySelectorAll(".opt")],lock=()=>bs.forEach(b=>{b.disabled=true});
+  bs.forEach(b=>{b.onclick=()=>{
+    if(done)return;done=1;const k=+b.dataset.k;MINE[i]=k;b.classList.add("pick");lock();
+    $("st").textContent=t("sent");
+    db.ref("ans/"+R+"/"+i+"/"+U).set({k,ts:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{$("st").textContent=t("send_fail")});
+  }});
+  clearInterval(TM);
+  TM=setInterval(()=>{
+    const left=Math.max(0,lim-(now()-t0)/1000),tt=$("tt");if(!tt)return;
+    tt.textContent=Math.ceil(left);tt.classList.toggle("low",left<=lim*.27);$("tb").style.width=left/lim*100+"%";
+    const s=Math.ceil(left);if(!done&&s<=5&&s>0&&s!==ls){ls=s;snd("tick")}
+    if(left<=0&&!done){done=1;lock();$("st").textContent=t("time_up")}
+  },200);
+}
+</script>
+</body>
+</html>
