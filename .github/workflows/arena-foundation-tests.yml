@@ -24,6 +24,26 @@ jobs:
           node --check arena/simulator.mjs
           node --check arena/live.mjs
           node --check arena/projector.mjs
+          node --check arena/security.emulator.test.mjs
+          node --check arena/trusted/scoring.mjs
+          node --check arena/trusted/scoring.test.mjs
           node --check arena/security.test.mjs
       - name: Unit tests for local round engine
-        run: node --test arena/engine.test.mjs arena/security.test.mjs
+        run: node --test arena/engine.test.mjs arena/security.test.mjs arena/trusted/scoring.test.mjs
+
+  firebase-rules-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install test-only Firebase dependencies
+        run: npm install --prefix arena --no-audit --no-fund
+      - name: Execute realtime database security policy tests in emulator
+        run: npm --prefix arena run test:rules
