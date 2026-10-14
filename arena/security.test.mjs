@@ -49,3 +49,12 @@ test("late joiners cannot submit an answer to the round in which they joined",()
  assert.match(answer,/joinedRound/);
  assert.match(answer,/!== \$round/);
 });
+
+test("session closure is permanent and no implicit question change while active",()=>{
+ const p=arena.rooms.$roomId.public;
+ assert.match(p[".write"],/newData\.exists\(\)/);
+ assert.match(p[".write"],/!== 'completed'/);
+ assert.match(p[".validate"],/status/);
+ assert.match(p[".validate"],/question/);
+ assert.match(p[".validate"],/deadline/);
+});
