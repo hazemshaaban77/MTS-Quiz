@@ -80,6 +80,8 @@ test("live question may not be silently replaced without closure",async()=>{
   });
   const ref=trainer().ref(root+"/rooms/"+otherRoom+"/public");
   await assertFails(ref.child("question").set("Swap without closing"));
+  await assertFails(ref.child("options/0").set("New option"));
+  await assertFails(ref.child("options/2").set("Injected option"));
   await assertFails(ref.child("round").set("r2"));
   await assertFails(ref.child("deadline").set(Date.now()+500000));
   await assertSucceeds(ref.child("status").set("between"));
