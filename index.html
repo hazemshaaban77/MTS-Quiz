@@ -41,6 +41,7 @@ function listen(){
 }
 
 function render(){
+  if(C&&C.t0&&MINE[C.i]===undefined){try{const saved=localStorage.getItem("mtsArenaAnswer:"+R+":"+U+":"+C.i+":"+C.t0);if(saved!==null&&/^[0-3]$/.test(saved))MINE[C.i]=Number(saved)}catch(e){}}
   if(KD[U]){msg("kicked");return}
   const me=P[U];
   if(!me||!me.name){
@@ -90,7 +91,12 @@ function buildQ(){
   bs.forEach(b=>{b.onclick=()=>{
     if(done)return;done=1;const k=+b.dataset.k;MINE[i]=k;b.classList.add("pick");lock();
     $("st").textContent=t("sent");
-    db.ref("ans/"+R+"/"+i+"/"+U).set({k,ts:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{$("st").textContent=t("send_fail")});
+    db.ref("ans/"+R+"/"+i+"/"+U).set({k,ts:firebase.database.ServerValue.TIMESTAMP}).then(()=>{
+      try{localStorage.setItem("mtsArenaAnswer:"+R+":"+U+":"+i+":"+t0,String(k))}catch(e){}
+    }).catch(()=>{
+      $("st").textContent=t("send_fail");
+      if(now()-t0<lim*1000){done=0;delete MINE[i];b.classList.remove("pick");bs.forEach(opt=>{opt.disabled=false})}
+    });
   }});
   clearInterval(TM);
   TM=setInterval(()=>{
