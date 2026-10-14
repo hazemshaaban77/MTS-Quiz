@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>لوحة المدرب - منصة تقييم نافذة</title>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="../firebase-config.js"></script>
+<script src="../common.js"></script>
+</head>
+<body><main>
+<header><img src="../mts.png" alt="MTS"><img src="../training.png" alt="Training Team"></header>
+<div id="app"></div>
+</main>
+<script>
+const $=id=>document.getElementById(id),app=$("app"),SV=firebase.database.ServerValue;
+const STOP='<button class="btn red" id="x">إنهاء الجلسة وحذف الغرفة</button>';
+let S,R,QQ,KEY,C,P={},RES={},CN={},MT={},ANS={},busy=0,refs=[],TM,lastKey="",ansRef,ansKey=-1,nextTimer=null;
+try{S=JSON.parse(localStorage.getItem("quizSetup")||"null")}catch(e){}
+S=Object.assign({title:"",code:"",lim:30,n:0,pass:70,lock:true,lb:1,speed:true,auto:true,autoNext:0,qs:[{q:"ما اسم المستند الذي يصدره الناقل ويثبت استلام البضاعة؟",o:["بوليصة الشحن","إيصال سداد","شهادة منشأ","عقد إيجار"],a:0,e:"بوليصة الشحن يصدرها الناقل وتثبت استلام البضاعة وعقد نقلها."}]},S||{});
+const save=()=>{try{localStorage.setItem("quizSetup",JSON.stringify(S))}catch(e){}};
+const ss=()=>{try{localStorage.setItem("quizSession",JSON.stringify({R,QQ}))}catch(e){}};
+
+auth.onAuthStateChanged(u=>{if(u&&!u.isAnonymous){if(!R)setup()}else login()});
+
+function login(){
+  app.innerHTML=`<h1>دخول المدرب</h1><div class="card"><input id="em" type="email" dir="ltr" placeholder="البريد الإلكتروني" autocomplete="username"><input id="pw" type="password" dir="ltr" placeholder="كلمة المرور" autocomplete="current-password"><button class="btn" id="li">دخول</button><p class="err" id="e"></p></div>`;
+  $("li").onclick=()=>auth.signInWithEmailAndPassword($("em").value.trim(),$("pw").value).catch(()=>{$("e").textContent="بيانات الدخول غير صحيحة"});
+}
+
+function setup(){
+  S.qs.forEach(x=>{while(x.o.length<4)x.o.push("");x.e=x.e||""});
+  app.innerHTML=`<h1>لوحة المدرب</h1><div id="rs"></div><div class="card"><label class="fl">عنوان المسابقة<input id="ttl" maxlength="60" value="${esc(S.title)}" placeholder="مثال: تقييم سيشن إجراءات الصادر"></label><label class="fl">كود الغرفة الثابت (حروف إنجليزي وأرقام، 3 على الأقل؛ فاضي = كود عشوائي)<input id="code" dir="ltr" maxlength="20" value="${esc(S.code)}" placeholder="nafeza1"></label><label class="fl">مدة كل سؤال بالثواني<input id="lim" type="number" min="5" max="120" value="${S.lim}"></label><label class="fl">عدد الأسئلة في الجولة (0 = كل الأسئلة)<input id="nq" type="number" min="0" value="${S.n||0}"></label><label class="fl">نسبة النجاح % (0 = بدون حد نجاح)<input id="pass" type="number" min="0" max="100" value="${S.pass}"></label><label class="fl">لوحة الصدارة: 1 = بعد كل سؤال، 0 = في النهاية فقط، أو رقم N = كل N أسئلة<input id="lb" type="number" min="0" value="${S.lb}"></label><label class="fl">الانتقال للسؤال التالي بعد عرض النتيجة (0 = يدوي، أو بعد 5 / 10 / 15 ثانية)<select id="an"><option value="0" ${!S.autoNext?"selected":""}>يدوي</option><option value="5" ${S.autoNext===5?"selected":""}>5 ثوانٍ</option><option value="10" ${S.autoNext===10?"selected":""}>10 ثوانٍ</option><option value="15" ${S.autoNext===15?"selected":""}>15 ثانية</option></select></label><label class="fl" style="display:flex;gap:8px;align-items:center"><input id="sp" type="checkbox" ${S.speed!==false?"checked":""} style="width:auto;margin:0">مكافأة السرعة (بدونها: 1000 نقطة للإجابة الصحيحة)</label><label class="fl" style="display:flex;gap:8px;align-items:center"><input id="au" type="checkbox" ${S.auto!==false?"checked":""} style="width:auto;margin:0">إظهار نتيجة السؤال تلقائيًا عند انتهاء الوقت أو إجابة الجميع</label><label class="fl" style="display:flex;gap:8px;align-items:center"><input id="lk" type="checkbox" ${S.lock?"checked":""} style="width:auto;margin:0">قفل الانضمام تلقائياً بعد بدء الأسئلة</label></div><div id="qs"></div><button class="btn alt" id="add">إضافة سؤال</button><button class="btn" id="go">فتح الغرفة</button><p class="err" id="err"></p>`;
+  const qs=$("qs");
+  const draw=()=>{qs.innerHTML=S.qs.map((x,i)=>`<div class="card" data-i="${i}"><div class="top"><span>السؤال ${i+1}</span><button class="del" data-del>حذف</button></div><textarea data-f rows="2" placeholder="نص السؤال" aria-label="نص السؤال">${esc(x.q)}</textarea>${x.o.map((t,k)=>`<label class="oe"><input type="radio" name="r${i}" data-r="${k}" ${x.a===k?"checked":""} aria-label="الإجابة الصحيحة"><input type="text" data-o="${k}" value="${esc(t)}" placeholder="الاختيار ${LET[k]}"></label>`).join("")}<textarea data-e rows="2" placeholder="شرح الإجابة (اختياري، بيظهر للمتدربين بعد كل سؤال)" aria-label="شرح الإجابة">${esc(x.e)}</textarea></div>`).join("")};
+  qs.oninput=e=>{const t=e.target,x=S.qs[+t.closest(".card").dataset.i];if(t.dataset.f!==undefined)x.q=t.value;else if(t.dataset.e!==undefined)x.e=t.value;else if(t.dataset.o!==undefined)x.o[+t.dataset.o]=t.value;save()};
+  qs.onchange=e=>{const t=e.target;if(t.dataset.r!==undefined){S.qs[+t.closest(".card").dataset.i].a=+t.dataset.r;save()}};
+  qs.onclick=e=>{if(e.target.dataset.del!==undefined){S.qs.splice(+e.target.closest(".card").dataset.i,1);save();draw()}};
+  $("add").onclick=()=>{S.qs.push({q:"",o:["","","",""],a:0,e:""});save();draw();qs.lastElementChild.scrollIntoView({block:"center"})};
+  $("ttl").oninput=e=>{S.title=e.target.value;save()};
+  $("go").onclick=openRoom;
+  draw();
+  let sv;try{sv=JSON.parse(localStorage.getItem("quizSession")||"null")}catch(e){}
+  if(sv&&sv.R&&sv.QQ)db.ref("rooms/"+sv.R+"/ctl").once("value").then(s=>{
+    if(!s.val()||!$("rs"))return;
+    $("rs").innerHTML=`<div class="card"><h3>جلسة غير منتهية (كود ${esc(sv.R)})</h3><button class="btn" id="rz">استئناف الجلسة</button><button class="btn alt" id="ig">تجاهل</button></div>`;
+    $("rz").onclick=()=>{R=sv.R;QQ=sv.QQ;KEY=QQ.map(x=>x.a);attach()};
+    $("ig").onclick=()=>{try{localStorage.removeItem("quizSession")}catch(e){}$("rs").innerHTML=""};
+  }).catch(()=>{});
+}
+
+function clean(){
+  const out=[],er=$("err");
+  for(let i=0;i<S.qs.length;i++){
+    const x=S.qs[i],q=x.q.trim(),o=[];let a=-1;
+    x.o.forEach((t,k)=>{t=t.trim();if(t){if(k===x.a)a=o.length;o.push(t)}});
+    if(!q&&!o.length)continue;
+    if(!q||o.length<2||a<0){er.textContent=`راجع السؤال ${i+1}: لازم نص السؤال واختياران على الأقل وإجابة صحيحة محدّدة.`;return null}
+    out.push({q,o,a,e:x.e});
+  }
+  if(!out.length){er.textContent="أضف سؤالاً واحداً على الأقل.";return null}
+  return out;
+}
+
+async function openRoom(){
+  const L=clean();if(!L)return;
+  S.lim=Math.min(Math.max(+$("lim").value|0||30,5),120);S.n=Math.max(+$("nq").value|0,0);
+  S.pass=Math.min(Math.max(+$("pass").value|0,0),100);S.lock=$("lk").checked;S.speed=$("sp").checked;S.auto=$("au").checked;S.autoNext=[5,10,15].includes(+$("an").value)?+$("an").value:0;S.lb=$("lb").value===""?1:Math.max(+$("lb").value|0,0);
+  S.code=($("code").value||"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,20);
+  if(S.code&&S.code.length<3){$("err").textContent="كود الغرفة لازم يكون 3 حروف أو أرقام على الأقل.";return}
+  save();
+  const id=S.code||Math.random().toString(36).slice(2,7);
+  try{
+    const ex=(await db.ref("rooms/"+id+"/ctl").once("value")).val();
+    if(ex&&!confirm("فيه جلسة سابقة بنفس الكود، وفتح غرفة جديدة هيمسح نتايجها. تكمل؟"))return;
+    const n=S.n>0?Math.min(S.n,L.length):L.length;
+    QQ=sh(L).slice(0,n).map(x=>{const o=sh(x.o.map((t,k)=>({t,ok:k===x.a})));return{q:x.q,o:o.map(z=>z.t),a:o.findIndex(z=>z.ok),e:(x.e||"").trim()}});
+    KEY=QQ.map(x=>x.a);
+    await Promise.all(["rooms","ans","eids"].map(p=>db.ref(p+"/"+id).remove()));
+    await db.ref("rooms/"+id).set({meta:{title:S.title,pass:S.pass,lb:S.lb,speed:S.speed,auto:S.auto,autoNext:S.autoNext},qs:QQ.map(({q,o})=>({q,o})),ctl:{phase:"lobby",i:0,lim:S.lim,n:QQ.length}});
+  }catch(e){$("err").textContent="تعذّر فتح الغرفة. راجع قواعد قاعدة البيانات (Rules) وإيميل المدرب فيها.";return}
+  R=id;ss();attach();
+}
+
+function attach(){
+  clearTimeout(nextTimer);nextTimer=null;
+  clearInterval(TM);lastKey="";C=null;P={};RES={};CN={};MT={};ansKey=-1;
+  const r=db.ref("rooms/"+R);refs=[r];
+  r.on("value",s=>{
+    const d=s.val();if(!d||!d.ctl)return;
+    C=d.ctl;P=d.players||{};RES=d.res||{};CN=d.cnt||{};MT=d.meta||{};
+    if(C.phase==="q"&&ansKey!==C.i)watchAns();
+    render();upd();scheduleNext();
+  });
+  TM=setInterval(tick,250);
+}
+
+function watchAns(){
+  if(ansRef)ansRef.off();
+  ansKey=C.i;ANS={};ansRef=db.ref("ans/"+R+"/"+C.i);
+  ansRef.on("value",s=>{ANS=s.val()||{};cnt()});
+}
+const cnt=()=>{const n=Object.keys(ANS).length,a=$("ac");if(a)a.textContent=n+" من "+Object.keys(P).length+" أجابوا";if(C&&C.phase==="q"&&C.ac!==n)db.ref("rooms/"+R+"/ctl/ac").set(n)};
+const kick=e=>{const u=e.target.dataset.k;if(u&&confirm("استبعاد هذا المتدرب من الجلسة؟"))db.ref("rooms/"+R).update({["players/"+u]:null,["kicked/"+u]:true})};
+
+function sumTxt(){
+  const ids=Object.keys(P),pc=+MT.pass||0;
+  if(!pc||!ids.length)return ids.length+" متدرب شاركوا";
+  const ok=ids.filter(u=>rights(RES,u,C.n)/C.n*100>=pc).length;
+  return `نجح ${ok} من ${ids.length} (حد النجاح ${pc}%)`;
+}
+
+function upd(){
+  if(!C)return;
+  const ph=C.phase;
+  if(ph==="lobby"){
+    const n=Object.keys(P).length;
+    if($("pc"))$("pc").textContent=n;
+    if($("pl"))$("pl").innerHTML=Object.entries(P).map(([u,p])=>`<span class="tag">${esc(p.name||"")} <button class="del" data-k="${u}" aria-label="استبعاد">✕</button></span>`).join("");
+    if($("st"))$("st").disabled=!n;
+  }else if(ph==="q")cnt();
+  else{
+    if($("lb"))$("lb").innerHTML=board(P,ph==="rev"?RES[C.i]:null,"",C.n*1000,1);
+    if($("sm"))$("sm").textContent=sumTxt();
+    if($("lk2"))$("lk2").textContent=C.lock?"السماح بالانضمام المتأخر":"قفل الانضمام";
+  }
+}
+
+function render(){
+  const k=C.phase+C.i;if(k===lastKey)return;lastKey=k;
+  const ph=C.phase,i=C.i,q=QQ[i]||{q:"",o:[],e:""};
+  if(ph==="lobby"){
+    const u=new URL("index.html",location.href);u.searchParams.set("room",R);
+    app.innerHTML=`<h1>${esc(MT.title||"المسابقة")}</h1><div class="card" style="text-align:center"><h2>امسح الـ QR للانضمام</h2><div id="qr"></div><p dir="ltr" style="word-break:break-all;font-size:13px">${esc(u.href)}</p><h3>المنضمون (<span id="pc">0</span>)</h3><div id="pl"></div></div><button class="btn alt" id="sc">🖥️ فتح شاشة العرض (للبروجكتر)</button><button class="btn" id="st" disabled>ابدأ المسابقة</button>`+STOP;
+    if(window.QRCode)new QRCode($("qr"),{text:u.href,width:180,height:180});
+    $("st").onclick=()=>openQ(0);
+    $("sc").onclick=()=>window.open(new URL("screen.html?room="+R,location.href).href,"_blank");
+  }else if(ph==="q"){
+    app.innerHTML=`<div class="top"><span>السؤال ${i+1} من ${C.n}</span><span id="ac"></span></div><div class="top"><span>الوقت المتبقي</span><span class="time" id="tt">${C.lim}</span></div><div class="tbar"><i id="tb"></i></div><div class="card"><h2>${esc(q.q)}</h2>${q.o.map((t,j)=>`<div class="l1" style="padding:6px 0"><b>${LET[j]}</b><span>${esc(t)}</span></div>`).join("")}</div><button class="btn alt" id="rv">إظهار النتيجة الآن</button>`+STOP;
+    $("rv").onclick=reveal;
+  }else if(ph==="rev"){
+    const cn=CN[i]||[0,0,0,0],tot=Math.max(1,[0,1,2,3].reduce((a,j)=>a+(cn[j]||0),0)),last=i+1>=C.n;
+    app.innerHTML=`<div class="top"><span>نتيجة السؤال ${i+1} من ${C.n}</span></div><div class="card"><h2>${esc(q.q)}</h2>${q.o.map((t,j)=>`<div class="l1"><b>${LET[j]}</b><span class="nm">${esc(t)} ${j===KEY[i]?"✅":""}</span><span>${cn[j]||0}</span></div><div class="stat"><i style="width:${(cn[j]||0)/tot*100}%"></i></div>`).join("")}${q.e?`<p style="color:var(--ink)">💡 ${esc(q.e)}</p>`:""}</div>${lbShow(MT,i,C.n)?`<div class="card"><h3>لوحة الصدارة 🏆</h3><div id="lb"></div></div>`:""}<button class="btn" id="nx">${last?"إنهاء المسابقة 🏁":"السؤال التالي ⬅️"}</button><button class="btn alt" id="ex">تصدير النتائج حتى الآن</button><button class="btn alt" id="lk2"></button>`+STOP;
+    $("nx").onclick=()=>last?finish():openQ(i+1);
+    $("lk2").onclick=()=>db.ref("rooms/"+R+"/ctl").update({lock:C.lock?null:true});
+  }else if(ph==="end"){
+    app.innerHTML=`<h1>النتيجة النهائية 🏆</h1><div class="card"><p class="verdict ok" id="sm"></p><div id="lb"></div></div><button class="btn" id="ex">تصدير النتائج (Excel)</button><button class="btn alt" id="x">جلسة جديدة</button>`;
+    if(window.confetti)confetti({particleCount:150,spread:80,origin:{y:.6}});
+  }
+  if($("x"))$("x").onclick=endRoom;
+  if($("ex"))$("ex").onclick=exportCSV;
+  if($("lb"))$("lb").onclick=kick;
+  if($("pl"))$("pl").onclick=kick;
+}
+
+function scheduleNext(){
+  clearTimeout(nextTimer);nextTimer=null;
+  if(!C||C.phase!=="rev"||!C.revealedAt||!MT.autoNext||!Number.isFinite(+MT.autoNext))return;
+  const question=C.i,stamp=C.revealedAt,delay=Math.max(0,MT.autoNext*1000-(now()-stamp));
+  nextTimer=setTimeout(()=>{
+    nextTimer=null;
+    if(!C||C.phase!=="rev"||C.i!==question||C.revealedAt!==stamp)return;
+    if(question+1>=C.n)finish();else openQ(question+1);
+  },delay);
+}
+
+function openQ(i){
+  clearTimeout(nextTimer);nextTimer=null;
+  const u={phase:"q",i,t0:SV.TIMESTAMP,revealedAt:null,correct:null,expl:null,ac:0};
+  if(i===0&&S.lock)u.lock=true;
+  db.ref("rooms/"+R+"/ctl").update(u);
+}
+function finish(){
+  clearTimeout(nextTimer);nextTimer=null;
+  db.ref("rooms/"+R).update({"ctl/phase":"end",key:{a:KEY,e:QQ.reduce((o,x,i)=>{if(x.e)o[i]=x.e;return o},{})}});
+}
+
+function tick(){
+  if(!C||C.phase!=="q"||!C.t0)return;
+  const el=(now()-C.t0)/1000,left=Math.max(0,C.lim-el),t=$("tt");
+  if(t){t.textContent=Math.ceil(left);t.classList.toggle("low",left<=C.lim*.27);$("tb").style.width=left/C.lim*100+"%"}
+  const np=Object.keys(P).length;
+  if(MT.auto!==false&&(el>=C.lim+1.2||(np&&Object.keys(ANS).length>=np&&el>1)))reveal();
+}
+
+async function reveal(){
+  if(busy||!C||C.phase!=="q")return;busy=1;
+  try{
+    const i=C.i,A=(await db.ref("ans/"+R+"/"+i).once("value")).val()||{},up={},res={},cn=[0,0,0,0];
+    Object.keys(P).forEach(u=>{
+      const a=A[u];let p=-1;
+      if(a&&a.k>=0&&a.k<4){
+        cn[a.k]++;
+        const el=(a.ts-C.t0)/1000;
+        p=a.k===KEY[i]&&el<=C.lim+1.5?(MT.speed===false?1000:Math.round(500+500*(1-Math.min(Math.max(el,0),C.lim)/C.lim))):0;
+      }
+      res[u]=p;
+      if(p>0)up["players/"+u+"/score"]=(P[u].score||0)+p;
+    });
+    up["res/"+i]=res;up["cnt/"+i]=cn;up["ctl/phase"]="rev";up["ctl/revealedAt"]=SV.TIMESTAMP;up["ctl/correct"]=KEY[i];up["ctl/expl"]=QQ[i].e||null;
+    await db.ref("rooms/"+R).update(up);
+  }catch(e){alert("تعذّر إظهار النتيجة، حاول تاني.")}
+  busy=0;
+}
+
+async function exportCSV(){
+  let eids={};
+  try{eids=(await db.ref("eids/"+R).once("value")).val()||{}}catch(e){}
+  const u2e={};Object.entries(eids).forEach(([e,u])=>u2e[u]=e);
+  const n=C.n,pc=+MT.pass||0,ids=Object.keys(P).sort((a,b)=>(P[b].score||0)-(P[a].score||0));
+  const cell=v=>{v=String(v==null?"":v);if(/^[=+\-@\t\r]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'};
+  const mark=(i,u)=>{const r=(RES[i]||{})[u];return r===undefined?"":r>0?"✓":r===0?"✕":"–"};
+  const head=["الاسم","الرقم الوظيفي","النقاط","إجابات صحيحة","النسبة %","النتيجة",...Array.from({length:n},(_,i)=>"س"+(i+1))];
+  const rows=[head,...ids.map(u=>{
+    const r=rights(RES,u,n),pct=Math.round(r/n*100);
+    return [P[u].name||"",u2e[u]||"",P[u].score||0,r,pct,pc?(pct>=pc?"ناجح":"لم يجتز"):"",...Array.from({length:n},(_,i)=>mark(i,u))];
+  }),["نسبة الإجابات الصحيحة","","","","","",...Array.from({length:n},(_,i)=>ids.length?Math.round(ids.filter(u=>(RES[i]||{})[u]>0).length/ids.length*100)+"%":"")]];
+  const csv="\ufeff"+rows.map(r=>r.map(cell).join(",")).join("\r\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download=("نتائج-"+(MT.title||R)+"-"+new Date().toISOString().slice(0,10)).replace(/[\\/:*?"<>|]/g,"")+".csv";
+  document.body.appendChild(a);a.click();a.remove();
+}
+
+function endRoom(){
+  if(!confirm("هتتمسح الغرفة ونتايجها نهائياً. صدّرت النتائج؟ تكمل؟"))return;
+  clearTimeout(nextTimer);nextTimer=null;
+  clearInterval(TM);refs.forEach(r=>r.off());if(ansRef){ansRef.off();ansRef=null}
+  const id=R;R=null;C=null;lastKey="";ansKey=-1;
+  try{localStorage.removeItem("quizSession")}catch(e){}
+  setup();
+  ["rooms","ans","eids"].forEach(p=>db.ref(p+"/"+id).remove());
+}
+</script>
+</body>
+</html>
