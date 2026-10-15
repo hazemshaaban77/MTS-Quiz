@@ -1,0 +1,53 @@
+name: Arena standalone preview package
+on:
+  push:
+    branches: ["feature/mts-training-arena-foundation"]
+    paths:
+      - "arena/**"
+      - "firebase-config.js"
+      - "mts.png"
+      - "training.png"
+      - ".github/workflows/arena-preview-package.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify source files and Firebase project binding
+        run: |
+          test -f firebase-config.js
+          test -f mts.png
+          test -f training.png
+          test -f arena/live.html
+          test -f arena/live.mjs
+          node --check arena/live.mjs
+          node --check arena/projector.mjs
+          grep -q 'mts-quiz-64faa' firebase-config.js
+      - name: Prepare isolated deployable folder
+        run: |
+          mkdir -p dist/arena
+          cp -R arena/. dist/arena/
+          cp firebase-config.js mts.png training.png dist/
+          cat > dist/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <meta http-equiv="refresh" content="0;url=./arena/live.html">
+          <title>MTS Training Arena — Firebase Pilot</title></head>
+          <body><p><a href="./arena/live.html">Open MTS Training Arena pilot</a></p></body></html>
+          HTML
+          rm -rf dist/arena/security dist/arena/trusted
+          rm -f dist/arena/*.test.mjs dist/arena/package.json dist/arena/firebase*.json dist/arena/README.md
+          find dist -type f | sort
+      - name: Upload static preview package
+        uses: actions/upload-artifact@v4
+        with:
+          name: MTS-Training-Arena-Standalone-Preview
+          path: dist/
+          retention-days: 14
