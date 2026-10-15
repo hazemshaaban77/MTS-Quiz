@@ -8,6 +8,11 @@ on:
       - "mts.png"
       - "training.png"
       - ".github/workflows/arena-preview-package.yml"
+  pull_request:
+    paths:
+      - "arena/**"
+      - "firebase-config.js"
+      - ".github/workflows/arena-preview-package.yml"
   workflow_dispatch:
 permissions:
   contents: read
