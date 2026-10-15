@@ -2,6 +2,8 @@ import test,{before,after} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {initializeTestEnvironment,assertFails,assertSucceeds} from "@firebase/rules-unit-testing";
+import firebase from "firebase/compat/app";
+import "firebase/compat/database";
 const merged=JSON.parse(readFileSync(new URL("./security/merged-rules.candidate.json",import.meta.url),"utf8")).rules;
 const expected={
  rooms:{"$room":{".read":"auth != null",".write":"auth.token.email === 'hazemshaaban65@gmail.com'",players:{"$uid":{name:{".write":"auth != null && auth.uid === $uid && !root.child('rooms').child($room).child('ctl').child('lock').exists() && !root.child('rooms').child($room).child('kicked').child(auth.uid).exists()",".validate":"newData.isString() && newData.val().length > 0 && newData.val().length <= 30"}}}}},
@@ -37,8 +39,8 @@ test("old answer tree remains admin-readable, player may write own immutable ans
  await assertFails(user().ref("ans/"+room).get());
  await assertSucceeds(oldAdmin().ref("ans/"+room).get());
  const attempt=user().ref("ans/"+room+"/q0/player1");
- await assertSucceeds(attempt.set({k:1,ts:Date.now()}));
- await assertFails(attempt.set({k:2,ts:Date.now()}));
+ await assertSucceeds(attempt.set({k:1,ts:firebase.database.ServerValue.TIMESTAMP}));
+ await assertFails(attempt.set({k:2,ts:firebase.database.ServerValue.TIMESTAMP}));
 });
 test("old EIDs still allow player to claim only own id and preserve immutability of other ids",async()=>{
  await assertSucceeds(user().ref("eids/"+room+"/EMP01").set("player1"));
